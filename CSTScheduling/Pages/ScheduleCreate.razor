@@ -1,0 +1,151 @@
+@page "/ScheduleCreate"
+@using CSTScheduling.Data.Services
+@using CSTScheduling.Shared
+@using CSTScheduling.Utilities
+@using Blazorise.DataGrid
+@using CSTScheduling.Pages
+
+@inject CstScheduleDbService dbService
+@inject NavigationManager nv
+@inject IJSRuntime jsRuntime
+
+
+
+@if (dbService.CurrentDepartment.ID == 0)
+{
+    <h1 style="background-image: linear-gradient(45deg, #763898 0%, #272b30 60%); padding-left: 1em; color: #aaa;">Scheduling</h1>
+    <br>
+    <h3>Please Create a Department to Create Its Schedule</h3>
+}
+else
+{
+    <h1 style="background-image: linear-gradient(45deg, #763898 0%, #272b30 60%); padding-left: 1em; color: #aaa;">@dbService.CurrentDepartment.departmentName Scheduling</h1>
+    <div class="row">
+        <div class="col-4">
+            @if (semList.Count != 0)
+            {
+                <select class="form-control" id="ins" value="Please select a semester" @onchange="@SetCurrentSem">
+                    @for (int i = 1; i <= dbService.CurrentDepartment.lengthInYears; i++)
+                    {
+                        <option disabled>Year @i-----</option>
+                        @foreach (Semester sem in semList)
+                        {
+                            @if (int.Parse(sem.SemesterID.Split(',')[1]) == @i)
+                            {
+                                <option value="@sem.SemesterID">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;@parseSemesterID(sem.SemesterID)</option>
+                            }
+                        }
+                    }
+                </select>
+            }
+            else
+            {
+                <select class="form-control" id="ins" disabled>
+                    <option>-- No semesters added --</option>
+                </select>
+            }
+        </div>
+        <div class="col-5">
+
+        </div>
+    </div>
+
+    <div>
+        @if (semester.ID != 0)
+        {
+            <ul class="nav nav-tabs">
+                @if (DatePointList.Count > 1)
+                {
+                    @for (int i = 0; i < DatePointList.Count - 1; i++)
+                    {
+                        var x = i;
+                        <li><button class="btn @(currentDatePoint == x ? "btn-info" : "btn-outline-info")" @onclick="(() => selectDatePoint(x))">@DatePointList[i].Value.ToString("MMM dd") - @DatePointList[i + 1].Value.ToString("MMM dd")</button></li>
+                    }
+                }
+            </ul>
+            <ScheduleComponent  semester="semester" currentDatePoint="currentDatePoint" datePointList="DatePointList" semCourses="semCourses" renderDataList="true"/>
+
+        }
+    </div>
+}
+
+
+@code
+{
+
+    #region Parameters
+
+    // The selected semester
+    public Semester semester = new();
+    // The current DateRange
+    public int currentDatePoint = 0;
+    // The list of courses for the current semester
+    public List<Course> semCourses = new List<Course>();
+
+    #endregion
+
+    // The current student group
+    public String group = "";
+    // The list of all semesters
+    public List<Semester> semList = new();
+    // The currently selected semesters ID
+    string boundSemID = "";
+    public List<DateTime?> DatePointList = new List<DateTime?>();
+
+
+    /// <summary>
+    /// Called when the component loads, retrieves the Semester objects for the current Department, and sets the service variable ()
+    /// </summary>
+    /// <returns></returns>
+    protected async override Task OnInitializedAsync()
+    {
+        semList = await dbService.GetAllSemesters();
+
+        dbService.CurrentSemester = this.semester;
+    }
+
+    /// <summary>
+    /// Selects a Date range to use for the ScheduleCompoent from Date selector
+    /// </summary>
+    /// <param name="i"></param>
+    private void selectDatePoint(int i)
+    {
+        this.currentDatePoint = i;
+    }
+
+    /// <summary>
+    /// Sets the current Semester object (this.semester) to the Semester selected from the dropdown
+    /// <br />Retrieves the Semester objects Unique Dates for use in ScheduleComponent, set to (this.DatePointList)
+    /// <br />Retrieves the Semester objects Courses for use in the ScheduleComponent, set to (this.semCourses)
+    /// </summary>
+    /// <param name="e"></param>
+    private async void SetCurrentSem(ChangeEventArgs e)
+    {
+        this.currentDatePoint = 0;
+        boundSemID = e.Value.ToString();
+        //setting the current semester object
+        // and passing the semester object to the component
+        this.semester = semList.Find(x => x.SemesterID.Equals(boundSemID));
+        this.DatePointList = await dbService.GetSemesterDatePoints(this.semester);
+        this.semCourses = await dbService.GetCourseBySemester(this.semester);
+    }
+
+    /// <summary>
+    /// Parses The given Semester objects ID for use in the component
+    /// </summary>
+    /// <param name="SemesterID"></param>
+    /// <returns></returns>
+    private string parseSemesterID(string SemesterID)
+    {
+        string[] parsedValues = SemesterID.Split(',');
+        string groupLetter = Char.ConvertFromUtf32(int.Parse(parsedValues[3]) + 64);
+        this.group = groupLetter;
+        return "Semester " + parsedValues[2] + " " + groupLetter;
+    }
+
+}
+
+
+
+
+

@@ -1,0 +1,309 @@
+@page "/instructor"
+@using CSTScheduling.Data.Services
+@inject CstScheduleDbService dbService
+@inject NavigationManager nv
+@using Blazorise
+
+
+@if (dbService.CurrentDepartment.ID == 0)
+{
+    <h1 style="background-image: linear-gradient(45deg, #763898 0%, #272b30 60%); padding-left: 1em; color: #aaa;">Instructors</h1>
+    <br>
+    <h3>Please Create a Program to Add Instructors</h3>
+}
+else
+{
+    <h1 style="background-image: linear-gradient(45deg, #763898 0%, #272b30 60%); padding-left: 1em; color: #aaa;">@dbService.CurrentDepartment.departmentName Instructors</h1>
+
+    @* Need to get list of instructors to pass in *@
+    <button type="button" class="btn btn-outline-success" @onclick="Add">Add Instructor</button>
+
+    @if (NewInstructor != null)
+    {
+        <Modal Visible="@(NewInstructor != null)" Closed="RefreshPage">
+            <ModalContent Centered="true">
+                <ModalHeader>
+                    <CloseButton />
+                </ModalHeader>
+                <ModalBody>
+                    @if (InsMode == 0)
+                    {
+                        <InstructorAdd Busy="@Busy" NewInstructor="@NewInstructor" CancelRequest="Cancel"
+                                       SaveResult="@((success) => SaveResult(success))" />
+                    }
+                    @if (InsMode == 1)
+                    {
+                        <InstructorUpdate Busy="@Busy" NewInstructor="@NewInstructor"
+                                          EditIns="@((NewInstructor) => Edit(NewInstructor))" />
+                    }
+                </ModalBody>
+            </ModalContent>
+        </Modal>
+    }
+
+    @if (Instructors is null)
+    {
+        <p><em>Loading... !</em></p>
+    }
+    else
+    {
+        <div style="width:75%;">
+            <Table class="table">
+                <thead>
+                    <tr>
+                        <th>Email</th>
+                        <th>First Name</th>
+                        <th>Last Name</th>
+                        <th>Phone Number</th>
+                        <th>Office Number</th>
+                        <th>Note</th>
+                        <th></th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @*populate instructor table*@
+                    @for (int i = iPageStart; i < iPageEnd && i < Instructors.Count; i++)
+                    {
+                        Instructors.Sort(delegate (Instructor x, Instructor y)
+                        {
+                            if (x.fName == null && y.fName == null) return 0;
+                            else if (x.fName == null) return -1;
+                            else if (y.fName == null) return 1;
+                            else return x.fName.CompareTo(y.fName);
+                        });
+
+                        Instructor ins = Instructors[i];
+                        <tr>
+                            <td>@ins.email</td>
+                            <td>@ins.fName</td>
+                            <td>@ins.lName</td>
+                            <td>@ins.phoneNum</td>
+                            <td>@ins.officeNum</td>
+                            <td>@ins.note</td>
+                            <td>
+                                <button type="button" class="btn btn-outline-warning" @onclick="() => Edit(ins)">Edit</button>
+                            </td>
+                            <td>
+                                <button type="button" class="btn btn-outline-danger" @onclick="() => confirmDeleteInstructor(ins)">Delete</button>
+
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </Table>
+        </div>
+
+        @if (Instructors.Count > ROW_LIMIT)
+        {
+            <Pagination>
+                <PaginationItem Disabled="@IsPageNavigationDisabled(PREVIOUS)" @onclick="Previous">
+                    <PaginationLink>
+                        <span aria-hidden="true" id="back">Back</span>
+                    </PaginationLink>
+                </PaginationItem>
+                @{
+                    for (var i = 1; i <= iPageCount; i++)
+                    {
+                        var pageNumberAsString = i.ToString();
+                        <PaginationItem @key="pageNumberAsString" Active="@IsActive(pageNumberAsString)">
+                            <PaginationLink Page="@pageNumberAsString" Clicked="SetActive">
+                                <span aria-hidden="true" id="@pageNumberAsString">@pageNumberAsString</span>
+                            </PaginationLink>
+                        </PaginationItem>
+                    }
+                }
+
+                <PaginationItem Disabled="@IsPageNavigationDisabled(NEXT)" @onclick="Next">
+                    <PaginationLink>
+                        <span aria-hidden="true" id="next">Next</span>
+                    </PaginationLink>
+                </PaginationItem>
+
+            </Pagination>
+        }
+    }
+}
+
+@if (instructorToRemove != null)
+{
+    <Modal Visible="@(instructorToRemove != null)" Closed="@closeConfirmModal">
+        <ModalContent>
+            <ModalHeader>
+                <h1>Delete Instructor @instructorToRemove.ToString()?</h1>
+                <CloseButton></CloseButton>
+            </ModalHeader>
+            <ModalBody>
+                <p>
+                    Are you sure you want to permanently remove <Strong>Instructor @instructorToRemove.ToString()?</Strong><br />
+                    This Instructor will be permanently unassigned from any Scheduled courses.
+                </p>
+                <div id="divButtons" class="d-flex flex-row justify-content-center">
+                    <button class="btn btn-primary m-2 " @onclick="@(e => deleteInstructor())">Yes</button>
+                    <button class="btn btn-primary m-2" @onclick="@(e => closeConfirmModal())">No</button>
+                </div>
+            </ModalBody>
+        </ModalContent>
+    </Modal>
+}
+
+
+
+@code {
+
+
+    #region Instructor List code
+    public List<Instructor> Instructors;
+    public Instructor instructorToRemove = null;
+    private Instructor NewInstructor { get; set; }
+    private int InsMode { get; set; } = 0;
+    private bool Busy;
+    private bool Success;
+    private bool Error;
+
+
+    #region Instructor Delete Modal methods
+
+    /// <summary>
+    /// This method is to set the instructortoremove variable to the selected instructor and used to open the modal 
+    /// </summary>
+    /// <param name="ins"></param>
+    public void confirmDeleteInstructor(Instructor ins)
+    {
+        instructorToRemove = ins;
+    }
+
+    /// <summary>
+    /// This method is to close the modal and set instructortoremove variable to null
+    /// </summary>
+    private void closeConfirmModal()
+    {
+        instructorToRemove = null;
+    }
+
+    /// <summary>
+    /// this method is to delete the instructor
+    /// </summary>
+    public async void deleteInstructor()
+    {
+        if (instructorToRemove != null)
+        {
+            Instructors = await dbService.deleteInstructorAsync(instructorToRemove);
+            instructorToRemove = null;
+
+        }
+    }
+    #endregion
+
+    private void RefreshPage()
+    {
+        @inject NavigationManager NavigationManager;
+        NavigationManager.NavigateTo("instructor", true);
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        await ReloadInstructors();
+    }
+
+    private async Task ReloadInstructors()
+    {
+        Instructors = await dbService.GetInstructorsAsync();
+    }
+
+    private async void SaveResult(bool success)
+    {
+        Success = success;
+        Error = !success;
+        await ReloadInstructors();
+        NewInstructor = null;
+    }
+
+    private void Add()
+    {
+        InsMode = 0; //mode of 0 means add
+        NewInstructor = new();
+    }
+
+    private void Edit(Instructor ins)
+    {
+        InsMode = 1; //mode of 1 means to edit
+        NewInstructor = ins;
+    }
+
+    private void Cancel()
+    {
+        nv.NavigateTo("/instructor");
+    }
+    #endregion
+
+
+
+    #region Pagination code
+    private int iPageStart
+    {
+        get
+        {
+            return (int.Parse(currentPage) * ROW_LIMIT) - ROW_LIMIT;
+        }
+    }
+    private int iPageEnd
+    {
+        get
+        {
+            return int.Parse(currentPage) * ROW_LIMIT;
+        }
+    }
+    private int iPageCount
+    {
+        get
+        {
+            return (int)Math.Ceiling(Instructors.Count / (double)ROW_LIMIT);
+        }
+    }
+    private const string PREVIOUS = "previous";
+    private const string NEXT = "next";
+    private static string currentPage = "1"; // default to 1st page
+    private const int ROW_LIMIT = 10; // const used throughout page
+
+    private bool IsActive(string page)
+        => currentPage == page;
+
+    private bool IsPageNavigationDisabled(string navigation)
+    {
+        if (navigation.Equals(PREVIOUS))
+        {
+            return currentPage.Equals("1");
+        }
+        else if (navigation.Equals(NEXT))
+        {
+            return currentPage.Equals(iPageCount.ToString()) || Instructors.Count == 0;
+        }
+        return false;
+    }
+
+
+    private void Previous()
+    {
+        var currentPageAsInt = int.Parse(currentPage);
+        if (currentPageAsInt > 1)
+        {
+            currentPage = (currentPageAsInt - 1).ToString();
+        }
+    }
+
+    private void Next()
+    {
+        var currentPageAsInt = int.Parse(currentPage);
+        if (currentPageAsInt < (Instructors.Count / ROW_LIMIT) + 1)
+        {
+            currentPage = (currentPageAsInt + 1).ToString();
+        }
+    }
+
+
+    private void SetActive(string page)
+        => currentPage = page;
+    #endregion
+
+}

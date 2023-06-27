@@ -1,0 +1,165 @@
+﻿@page "/Report"
+
+@inject CstScheduleDbService db
+@using Blazorise.Components
+
+<h1 style="background-image: linear-gradient(45deg, #763898 0%, #272b30 60%); padding-left: 1em; color: #aaa;">Reports</h1>
+
+<div class="row"
+    <div class="col-4">
+        <select class="form-control" id="semDrop" value="Please select a semester" @onchange="@SetCurrentSem">
+            @for (int i = 1; i <= db.CurrentDepartment.lengthInYears; i++)
+            {
+                <option disabled>Year @i-----</option>
+                @foreach (Semester sem in semListAll)
+                {
+                    @if (int.Parse(sem.SemesterID.Split(',')[1]) == @i)
+                    {
+                        <option value="@sem.SemesterID">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;@parseSemesterID(sem.SemesterID)</option>
+                    }
+                }
+            }
+        </select>
+    </div>
+</div>
+<br />
+@if (semester != null && semester.ID > 0)
+{
+    <div class="row">
+        <div class="col-4">
+            <Field>
+
+                <FieldLabel>Instructor</FieldLabel>
+                <Select TValue="int" Multiple SelectedValues="@insListCurrent" SelectedValuesChanged="@InsChange" MaxVisibleItems="10">
+                    @foreach (Instructor ins in @insListAll)
+                    {
+                        <SelectItem Value="@ins.ID"> @ins.calcName </SelectItem>
+                    }
+                </Select>
+            </Field>
+        </div>
+        <div class="col-4">
+            <Field>
+                <FieldLabel>Room</FieldLabel>
+                <Select TValue="int" Multiple SelectedValues="@rmListCurrent" SelectedValuesChanged="@RoomChange" MaxVisibleItems="10">
+                    @foreach (Room rm in @rmListAll)
+                    {
+                        <SelectItem Value="@rm.ID"> @rm.roomNumber </SelectItem>
+                    }
+                </Select>
+            </Field>
+
+        </div>
+    </div>
+    <br />
+    <div class="row">
+        <div class="col-8">
+            @if (insListCurrent.Count() > 0 || rmListCurrent.Count > 0)
+            {
+                <a id="btnDownload" href="/PdfDownload?@hrefQueryString" class="btn btn-info w-100 ">Download</a>
+            }
+            else
+            {
+
+                <a id="btnDownload" class="btn btn-info w-100 disabled">Select Instructor or Room to Continue</a>
+            }
+        </div>
+    </div>
+}
+
+
+
+@code {
+
+
+    List<Instructor> insListAll = new();
+    List<int> insListCurrent = new();
+
+    List<Room> rmListAll = new();
+    List<int> rmListCurrent = new();
+
+    List<Semester> semListAll = new();
+
+    string hrefQueryString = "";
+
+    const string QryStrFormat = "sem={0}&ins={1}&rms={2}";
+
+    // The selected semester
+    public Semester semester = new();
+    // The current DateRange
+    public int currentDatePoint = 0;
+    // The list of courses for the current semester
+    public List<Course> semCourses = new List<Course>();
+
+    // The current student group
+    public String group = "";
+    // The currently selected semesters ID
+    string boundSemID = "";
+    public List<DateTime?> DatePointList = new List<DateTime?>();
+
+
+    Task InsChange(IReadOnlyList<int> insIDs)
+    {
+        insListCurrent = insIDs.ToList();
+        //if (!insListCurrent.Remove(newValue)) insListCurrent.Add(newValue);
+        StateHasChanged();
+        SetHrefQueryString();
+
+        return Task.CompletedTask;
+    }
+    Task RoomChange(IReadOnlyList<int> rmIDs)
+    {
+        rmListCurrent = rmIDs.ToList();
+        //if (!rmListCurrent.Remove(newValue)) rmListCurrent.Add(newValue);
+        StateHasChanged();
+        SetHrefQueryString();
+
+        return Task.CompletedTask;
+    }
+
+
+    protected override async Task OnInitializedAsync()
+    {
+        insListAll = await db.GetInstructorsAsync();
+        rmListAll = await db.GetRoomAsync();
+        semListAll = await db.GetAllSemesters();
+    }
+
+    /// <summary>
+    /// Sets the current Semester object (this.semester) to the Semester selected from the dropdown
+    /// <br />Retrieves the Semester objects Unique Dates for use in ScheduleComponent, set to (this.DatePointList)
+    /// <br />Retrieves the Semester objects Courses for use in the ScheduleComponent, set to (this.semCourses)
+    /// </summary>
+    /// <param name="e"></param>
+    private void SetCurrentSem(ChangeEventArgs e)
+    {
+        boundSemID = e.Value.ToString();
+        //setting the current semester object
+        // and passing the semester object to the component
+        this.semester = semListAll.Find(x => x.SemesterID.Equals(boundSemID));
+        StateHasChanged();
+        SetHrefQueryString();
+
+    }
+
+    /// <summary>
+    /// Parses The given Semester objects ID for use in the component
+    /// </summary>
+    /// <param name="SemesterID"></param>
+    /// <returns></returns>
+    private string parseSemesterID(string SemesterID)
+    {
+        string[] parsedValues = SemesterID.Split(',');
+        string groupLetter = Char.ConvertFromUtf32(int.Parse(parsedValues[3]) + 64);
+        this.group = groupLetter;
+        return "Semester " + parsedValues[2] + " " + groupLetter;
+    }
+
+
+
+    public void SetHrefQueryString()
+    {
+        hrefQueryString = String.Format(QryStrFormat, semester.ID, String.Join(",", insListCurrent), String.Join(",", rmListCurrent));
+    }
+
+}

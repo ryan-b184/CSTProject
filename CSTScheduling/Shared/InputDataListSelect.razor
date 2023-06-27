@@ -1,0 +1,6 @@
+@namespace CSTScheduling.Shared
+@inherits InputBase<TValue>
+@typeparam TValue
+
+<input class="@CssClass" type="search" @bind-value="this.CurrentStringValue" @attributes="this.AdditionalAttributes" list="@DataListID" @oninput="UpdateEnteredText" @onkeydown="OnKeyDown" />
+

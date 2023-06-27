@@ -1,0 +1,356 @@
+@page "/"
+@using CSTScheduling.Data.Services
+@using CSTScheduling.Shared
+@inject CstScheduleDbService DbService
+@inject IJSRuntime jsRuntime
+@inject NavigationManager NavManager
+
+
+<h1 style="background-image: linear-gradient(45deg, #763898 0%, #272b30 60%); padding-left: 1em; color: #aaa;">Programs</h1>
+
+@if (DbService.CurrentDepartment.ID == 0)
+{
+    <br>
+    <h3>No Programs Created</h3>
+    <br>
+    <button type="button" class="btn btn-primary" id="addProgramBtn" @onclick="Add">Add Program</button>
+}
+else
+{
+    <h3>Current Program: @currentDepartment.departmentName</h3>
+    <button type="button" class="btn btn-outline-success" id="addProgramBtn" @onclick="Add">Add Program</button>
+
+    <div style="width:75%;">
+
+        <Table class="table">
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Length</th>
+                    <th>Start Date</th>
+                    <th>End Date</th>
+                    <th>Semester Count</th>
+                    <th></th>
+                    <th></th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                @for (int i = (int.Parse(currentPage) - 1) * itemsPerPage; i < (int.Parse(currentPage) - 1) * itemsPerPage + itemsPerPage && i < depList.Count(); i++)
+                {
+                    Department dep = depList[i];
+                    <tr>
+                        <td id="depno_@dep.ID">@dep.departmentName</td>
+                        <td>@dep.lengthInYears</td>
+                        <td>@dep.startDate.ToString(dateFormat)</td>
+                        <td>@dep.EndDate.ToString(dateFormat)</td>
+                        <td>@dep.semesterCount</td>
+                        <td style="width:7%;">
+                            @if (dep.ID == DbService.CurrentDepartment.ID)
+                            {
+                                <button class="btn btn-secondary" Disabled>Select</button>
+                            }
+                            else
+                            {
+                                <button class="btn btn-outline-info" @onclick="@(e => SelectDepartment(dep))">Select</button>
+                            }
+                        </td>
+                        <td style="width:4%;">
+                            <button class="btn btn-outline-warning" @onclick="@(e => Edit(dep))">Edit</button>
+                        </td>
+                        <td>
+                            <button class="btn btn-outline-danger">Delete</button>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </Table>
+
+    </div>
+
+            @if (depList.Count > itemsPerPage)
+            {
+                <Pagination>
+                    <PaginationItem Disabled="@IsPageNavigationDisabled(PREVIOUS)" @onclick="Previous">
+                        <PaginationLink>
+                            <span aria-hidden="true" id="back">Back</span>
+                        </PaginationLink>
+                    </PaginationItem>
+                    @{
+                        for (var i = 1; i <= numPages; i++)
+                        {
+                            var pageNumberAsString = i.ToString();
+                            <PaginationItem @key="pageNumberAsString" Active="@IsActive(pageNumberAsString)">
+                                <PaginationLink Page="@pageNumberAsString" Clicked="SetActive">
+                                    @pageNumberAsString
+                                </PaginationLink>
+                            </PaginationItem>
+                        }
+                    }
+                    <PaginationItem Disabled="@IsPageNavigationDisabled(NEXT)" @onclick="Next">
+                        <PaginationLink>
+                            <span aria-hidden="true" id="next">Next</span>
+                        </PaginationLink>
+                    </PaginationItem>
+                </Pagination>
+            }
+        }
+
+        @if (departmentToAdd != null)
+        {
+            <Modal Visible="@(departmentToAdd != null)" Closed="@onModalClose">
+                <ModalContent>
+                    <ModalHeader>
+                            <CloseButton />
+                    </ModalHeader>
+                    <ModalBody>
+                        <EditForm Model="@departmentToAdd" OnValidSubmit="@saveDepartment">
+                            <DataAnnotationsValidator />
+
+                            @if (departmentToAdd.ID == 0)
+                            {
+                                <h1><b>Add Program</b></h1>
+                                <hr />
+                            }
+                            else
+                            {
+                                <h1><b>Edit Program</b></h1>
+                                <hr />
+                            }
+
+                            <div>
+                                <div class="flex-column">
+                                    <div class="form-group col-12">
+                                        <label for="departmentName">Program Name</label>
+                                        <InputText @bind-Value=departmentToAdd.departmentName class="form-control" id="departmentName" />
+                                        <ValidationMessage For="@(() => departmentToAdd.departmentName)" />
+                                    </div>
+
+                                </div>
+
+                                <div class="d-flex flex-row">
+                                    <div class="form-group col-4">
+                                        <label for="lengthInYears">Program Length In Years</label>
+                                        <InputNumber @bind-Value=departmentToAdd.lengthInYears class="form-control" id="lengthInYears" />
+                                        <ValidationMessage For="@(() => departmentToAdd.lengthInYears)" />
+                                    </div>
+                                    <div class="form-group col-4">
+                                        <label for="semesterCount">Program Semester Count</label>
+                                        <InputNumber @bind-Value=departmentToAdd.semesterCount class="form-control" id="semesterCount" />
+                                        <ValidationMessage For="@(() => departmentToAdd.semesterCount)" />
+                                    </div>
+                                    <div class="form-group col-4">
+                                        <label for="lengthInYears">Program Number Of Groups</label>
+                                        <InputNumber @bind-Value=departmentToAdd.ProgramNumberOfGroups class="form-control" id="ProgramNumberOfGroups" />
+                                    </div>
+                                </div>
+
+                                <div class="d-flex flex-row ">
+                                    <div class="form-group col-6">
+                                        <label for="startDate">Program Start Date</label>
+                                        <InputDate @bind-Value=departmentToAdd.startDate class="form-control" id="startDate" />
+                                        <ValidationMessage For="@(() => departmentToAdd.EndDate)" />
+                                    </div>
+
+                                    <div class="form-group col-6">
+                                        <label for="endDate">Program End Date</label>
+                                        <InputDate @bind-Value=departmentToAdd.EndDate class="form-control" id="endDate" />
+                                        <ValidationMessage For="@(() => departmentToAdd.EndDate)" />
+                                    </div>
+                                </div>
+                            </div>
+
+                            <hr>
+
+                            @if (departmentToAdd.ID == 0)
+                            {
+                                <button type="submit" class="btn btn-outline-success">Save</button>
+                            }
+                            else
+                            {
+                                <button type="submit" class="btn btn-outline-success">Update</button>
+                            }
+
+
+                        </EditForm>
+                    </ModalBody>
+                </ModalContent>
+            </Modal>
+        }
+
+
+        @code {
+
+
+
+            public List<Department> depList { get; private set; } = new List<Department>();
+            List<Department> workingList = new List<Department>();
+            Department departmentToAdd;
+            Department tempDep;
+            public Department currentDepartment;
+            String dateFormat = "MM/dd/yyyy";
+
+
+            int depMode = -1;
+
+            int roomAdd = 0;
+            int insAdd = 0;
+            Department placeHolder;
+
+            //#region Testing
+            //[CascadingParameter]
+            //public MainLayout Layout { get; set; }
+            //#endregion
+
+
+            #region Pagnation
+
+            private const string PREVIOUS = "previous";
+            private const string NEXT = "next";
+            private string currentPage = "1";
+            private int numPages;
+            private int itemsPerPage = 10;
+
+
+            private bool IsActive(string page)
+                => currentPage == page;
+
+            private bool IsPageNavigationDisabled(string navigation)
+            {
+                if (navigation.Equals(PREVIOUS))
+                {
+                    return currentPage.Equals("1");
+                }
+                else if (navigation.Equals(NEXT))
+                {
+                    return currentPage.Equals(numPages.ToString());
+                }
+                return false;
+            }
+
+            private void Previous()
+            {
+                var currentPageAsInt = int.Parse(currentPage);
+                if (currentPageAsInt > 1)
+                {
+                    currentPage = (currentPageAsInt - 1).ToString();
+                }
+            }
+
+            private void Next()
+            {
+                var currentPageAsInt = int.Parse(currentPage);
+                if (currentPageAsInt < numPages)
+                {
+                    currentPage = (currentPageAsInt + 1).ToString();
+                }
+            }
+
+            private void SetActive(string page)
+                => currentPage = page;
+
+            #endregion
+
+            private void onModalClose()
+            {
+                departmentToAdd = null;
+            }
+
+            private void SelectDepartment(Department dep)
+            {
+                DbService.CurrentDepartment = dep;
+
+                currentDepartment = DbService.GetCurrentDepartment();
+
+                //NavManager.NavigateTo("/program", true);
+
+            }
+
+            private void Add()
+            {
+                departmentToAdd = new();
+            }
+
+            private async void Edit(Department d)
+            {
+                departmentToAdd = d;
+            }
+
+            private async void saveDepartment(/*int[] roomIDBindable*/)
+            {
+                if (departmentToAdd.ID > 0)
+                {
+                    //editing current department
+                    editDepartment();
+                }
+                else
+                {//adding a new department
+                    Department savedValue = await DbService.AddDepartmentAsync(departmentToAdd);
+                    tempDep = departmentToAdd;
+
+                    this.currentDepartment = departmentToAdd;
+                    departmentToAdd = new();
+                    departmentToAdd.startDate = tempDep.startDate;
+                    departmentToAdd.EndDate = tempDep.EndDate;
+
+                    await refreshList();
+                }
+            }
+
+            private async void editDepartment()
+            {
+
+                placeHolder = new Department
+                {
+                    ID = departmentToAdd.ID,
+                    departmentName = departmentToAdd.departmentName,
+                    EndDate = departmentToAdd.EndDate,
+                    startDate = departmentToAdd.startDate,
+                    lengthInYears = departmentToAdd.lengthInYears,
+                    semesterCount = departmentToAdd.semesterCount,
+                };
+
+
+
+                try
+                {
+                    await DbService.EditDepartmentAsync(this.placeHolder);
+
+
+                    //this.departmentToAdd = new Department();
+
+                    departmentToAdd.ID = placeHolder.ID;
+                    //await jsRuntime.InvokeVoidAsync("alert", "Successfully edited Program");
+                }
+                catch (Exception e)
+                {
+                    await jsRuntime.InvokeVoidAsync("alert", "Failed to add program");
+                }
+
+
+                await refreshList();
+                placeHolder = new Department();
+            }
+
+
+
+            protected override void OnInitialized()
+            {
+                startup();
+            }
+
+            private async void startup()
+            {
+                depList = await DbService.GetDepartmentAsync();
+                numPages = (int)Math.Ceiling(depList.Count() / (double)itemsPerPage);
+                currentDepartment = DbService.GetCurrentDepartment();
+            }
+
+            private async Task refreshList()
+            {
+                depList = await DbService.GetDepartmentAsync();
+                numPages = (int)Math.Ceiling(depList.Count() / (double)itemsPerPage);
+            }
+
+
+        }

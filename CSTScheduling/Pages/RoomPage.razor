@@ -1,0 +1,351 @@
+@page "/room"
+@using CSTScheduling.Data.Services
+@using CSTScheduling.Shared
+@inject CstScheduleDbService DbService
+@inject IJSRuntime jsRuntime
+
+@if (DbService.CurrentDepartment.ID == 0)
+{
+    <h1 style="background-image: linear-gradient(45deg, #763898 0%, #272b30 60%); padding-left: 1em; color: #aaa;">Rooms</h1>
+    <br>
+    <h3>Please Create a Program to Add Rooms</h3>
+}
+else
+{
+    <h1 style="background-image: linear-gradient(45deg, #763898 0%, #272b30 60%); padding-left: 1em; color: #aaa;">@DbService.CurrentDepartment.departmentName Rooms</h1>
+    <button id="addRoomBtn" type="button" class="btn btn-outline-success" @onclick="Add">Add Room</button>
+    @if (room != null)
+    {
+        <Modal Visible="@(room != null)" Closed="@onModalClose">
+            <ModalContent>
+                <ModalHeader>
+                    <CloseButton></CloseButton>
+                </ModalHeader>
+                <ModalBody>
+                    <EditForm Model="@room" OnValidSubmit="@saveRoom">
+                        <DataAnnotationsValidator />
+                        @if (room.ID == 0)
+                        {
+                            <h1><b>Add Room</b></h1>
+                        }
+                        else
+                        {
+                            <h1><b>Edit Room</b></h1>
+                        }
+
+                        <hr />
+                        <div>
+                            <div class="d-flex flex-row">
+                                <div class="form-group col-6">
+                                    <label for="number">Room Number</label>
+                                    <InputText  @bind-Value=room.roomNumber class="form-control" id="number" />
+                                    <ValidationMessage For="@(() => room.roomNumber)" />
+                                </div>
+
+                                <div class="form-group col-6">
+                                    <label for="capacity">Room Capacity</label>
+                                    <InputNumber @bind-Value=room.capacity class="form-control" id="capacity" />
+                                    <ValidationMessage For="@(() => room.capacity)" />
+                                </div>
+                            </div>
+                            <div class="d-flex flex-row">
+                                <div class="form-group col-6">
+                                    <label for="city">Room City</label>
+                                    <InputText @bind-Value=room.city class="form-control" id="city" />
+                                    <ValidationMessage For="@(() => room.city)" />
+                                </div>
+
+                                <div class="form-group col-6">
+                                    <label for="campus">Room Campus</label>
+                                    <InputText @bind-Value=room.campus class="form-control" id="campus" />
+                                    <ValidationMessage For="@(() => room.campus)" />
+                                </div>
+                            </div>
+                        </div>
+                        <hr>
+
+                        <div>
+                            @if (room.ID > 0)
+                            {
+                                <input type="submit" class="btn btn-outline-success" value="Update" />
+                            }
+                            else
+                            {
+                                <input type="submit" class="btn btn-outline-success" value="Save" />
+                            }
+                        </div>
+
+                    </EditForm>
+                </ModalBody>
+                
+            </ModalContent>
+        </Modal>
+    }
+
+    <div style="width:75%;">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Room Number</th>
+                    <th>Capacity</th>
+                    <th>City</th>
+                    <th>Campus</th>
+                    <th></th>
+
+                </tr>
+            </thead>
+            <tbody>
+                @if (roomList.Count() > 0)
+                {
+                    @for (int i = (int.Parse(currentPage) - 1) * itemsPerPage; i < (int.Parse(currentPage) - 1) * itemsPerPage + itemsPerPage && i < roomList.Count(); i++)
+                    {
+                        Room room = roomList[i];
+                        <tr>
+                            <td id="roomno_@room.ID">@room.roomNumber</td>
+                            <td>@room.capacity</td>
+                            <td>@room.city</td>
+                            <td>@room.campus</td>
+                            <td>
+                                <button class="btn btn-outline-warning" @onclick="@(e => Edit(room))">Edit</button>
+                                <button class="btn btn-outline-danger" @onclick="@(e => confirmDeleteRoom(room))">Delete</button>
+                            </td>
+                        </tr>
+                    }
+                }
+            </tbody>
+        </table>
+    </div>
+        @if (roomList.Count > itemsPerPage)
+        {
+            <Pagination>
+                <PaginationItem Disabled="@IsPageNavigationDisabled(PREVIOUS)" @onclick="Previous">
+                    <PaginationLink>
+                        <span aria-hidden="true" id="back">Back</span>
+                    </PaginationLink>
+                </PaginationItem>
+                @{
+                    for (var i = 1; i <= numPages; i++)
+                    {
+                        var pageNumberAsString = i.ToString();
+                        <PaginationItem @key="pageNumberAsString" Active="@IsActive(pageNumberAsString)">
+                            <PaginationLink Page="@pageNumberAsString" Clicked="SetActive">
+                                @pageNumberAsString
+                            </PaginationLink>
+                        </PaginationItem>
+                    }
+                }
+                <PaginationItem Disabled="@IsPageNavigationDisabled(NEXT)" @onclick="Next">
+                    <PaginationLink>
+                        <span aria-hidden="true" id="next">Next</span>
+                    </PaginationLink>
+                </PaginationItem>
+            </Pagination>
+        }
+  }
+
+@if(roomToRemove != null)
+{
+    <Modal Visible="@(roomToRemove != null)" Closed="@closeConfirmModal">
+        <ModalContent>
+            <ModalHeader>
+                <h1>Delete Room @roomToRemove.roomNumber?</h1>
+            <CloseButton></CloseButton>
+            </ModalHeader>
+            <ModalBody>
+                <p>Are you sure you want to permanently remove <Strong>Room @roomToRemove.roomNumber?</Strong><br/>
+                This room will be permanently unassigned from any Scheduled courses.</p>
+                <div id="divButtons" class="d-flex flex-row justify-content-center">
+                    <button  class="btn btn-primary m-2 " @onclick="@(e => deleteRoom())">Yes</button>
+                    <button  class="btn btn-primary m-2" @onclick="@(e => closeConfirmModal())">No</button>
+                </div>
+            </ModalBody>
+        </ModalContent>
+    </Modal>
+}
+
+
+        @code {
+
+            public List<Room> roomList = new List<Room>();
+            public Room room { get; set; }
+            public Room placeHolder { get; set; } = new Room();
+            private Room tempRoom;
+
+            Room testModel = new Room();
+
+            List<Room> roomsToAdd = new List<Room>();
+
+            public Room roomToRemove = null;
+
+            #region Pagnation
+
+            private const string PREVIOUS = "previous";
+            private const string NEXT = "next";
+            private string currentPage = "1";
+            private int numPages;
+            private int itemsPerPage = 10;
+
+            private bool IsActive(string page)
+                => currentPage == page;
+
+            private bool IsPageNavigationDisabled(string navigation)
+            {
+                if (navigation.Equals(PREVIOUS))
+                {
+                    return currentPage.Equals("1");
+                }
+                else if (navigation.Equals(NEXT))
+                {
+                    return currentPage.Equals(numPages.ToString());
+                }
+                return false;
+            }
+
+            private void Previous()
+            {
+                var currentPageAsInt = int.Parse(currentPage);
+                if (currentPageAsInt > 1)
+                {
+                    currentPage = (currentPageAsInt - 1).ToString();
+                }
+            }
+
+            private void Next()
+            {
+                var currentPageAsInt = int.Parse(currentPage);
+                if (currentPageAsInt < numPages)
+                {
+                    currentPage = (currentPageAsInt + 1).ToString();
+                }
+            }
+
+            private void SetActive(string page)
+                => currentPage = page;
+
+            #endregion
+
+            private void onModalClose()
+            {
+                room = null;
+            }
+            /// <summary>
+            /// This method is to close the delete modal and set the roomtoremove variable to null
+            /// </summary>
+            private void closeConfirmModal()
+            {
+                roomToRemove = null;
+            }
+
+            /// <summary>
+            /// This method is to delete the room that was set on roomtoremove variable
+            /// </summary>
+            public async void deleteRoom()
+            {
+                if(roomToRemove != null)
+                {
+                    roomList =  await DbService.deleteRoomAsync(roomToRemove);
+                    roomToRemove = null;
+
+                }
+            }
+
+            /// <summary>
+            /// This method is to set roomtoremove variable to the selected room and used to open the delete modal
+            /// </summary>
+            /// <param name="room"></param>
+            public void confirmDeleteRoom(Room room)
+            {
+                roomToRemove = room;
+            }
+
+            private void Add()
+            {
+                room = new();
+            }
+
+            private void Edit(Room r)
+            {
+                room = r;
+            }
+
+            private async void saveRoom()
+            {
+                if (room.ID > 0)
+                {//edit an existing room
+                    editRoom();
+                }
+                else
+                {//add a new room
+
+                    Task<Room> savedValue = DbService.AddRoomAsync(room);
+                    if (DbService.roomSuccess == true)
+                    {
+                        //apparently doing this causes things to break
+                        //await jsRuntime.InvokeVoidAsync("alert", "Successfully added room");
+                        DbService.roomSuccess = false;
+                    }
+                    else
+                    {
+                        await jsRuntime.InvokeVoidAsync("alert", "Failed to add room");
+                    }
+                    await refreshList();
+                    tempRoom = room;
+                    room = new Room();
+                    room.campus = tempRoom.campus;
+                    room.city = tempRoom.city;
+                }
+            }
+
+
+
+
+
+
+            protected override void OnInitialized()
+            {
+
+                startup();
+            }
+
+            private async void startup()
+            {
+                this.roomList = await DbService.GetRoomAsync();
+                numPages = (int)Math.Ceiling(roomList.Count() / (double)itemsPerPage);
+            }
+
+            private async void editRoom()
+            {
+                placeHolder = new Room
+                {
+                    ID = room.ID,
+                    campus = room.campus,
+
+                    capacity = room.capacity,
+                    city = room.city,
+                    roomNumber = room.roomNumber
+                };
+
+                //pass the placeholder room object to the editRoomAsync
+                //change to try catch
+                await DbService.EditRoomAsync(placeHolder);
+                if (DbService.roomSuccess == true)
+                {
+                    //await jsRuntime.InvokeVoidAsync("alert", "Successfully edited room");
+                    DbService.roomSuccess = false;
+                }
+                else
+                {
+                    await jsRuntime.InvokeVoidAsync("alert", "Failed to edit room");
+                }
+
+                this.room = new Room();
+                await refreshList();
+            }
+
+            private async Task refreshList()
+            {
+                roomList = await DbService.GetRoomAsync();
+                numPages = (int)Math.Ceiling(roomList.Count() / (double)itemsPerPage);
+            }
+
+        }

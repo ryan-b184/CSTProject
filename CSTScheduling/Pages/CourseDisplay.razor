@@ -1,0 +1,555 @@
+@page "/Course"
+@using System.Linq
+@using Blazorise
+@using Microsoft.EntityFrameworkCore
+@using CSTScheduling.Data.Services
+@using System.Web.UI
+@inject CstScheduleDbService db
+
+
+@if (db.CurrentDepartment.ID == 0)
+{
+    <h1 style="background-image: linear-gradient(45deg, #763898 0%, #272b30 60%); padding-left: 1em; color: #aaa;">Courses</h1>
+    <br>
+    <h3>Please Create a Program to View Its Courses</h3>
+}
+else
+{
+    <h1 style="background-image: linear-gradient(45deg, #763898 0%, #272b30 60%); padding-left: 1em; color: #aaa;">@db.CurrentDepartment.departmentName Courses</h1>
+    <div style="width:75%;">
+        <Table id="CourseTable">
+            @*<h1>
+                    Courses
+                    <button type="submit" class="btn btn-primary" @onclick="setCourse">Add New Course</button>
+                </h1>*@
+            <thead>
+                <tr>
+                    <th>
+                        <label @onclick="(() => sortTable(0))">Name</label>
+                    </th>
+                    <th>
+                        <label @onclick="(() => sortTable(1))">Abbr.</label>
+                    </th>
+                    <th>
+                        <label @onclick="(() => sortTable(2))">Hours</label>
+                    </th>
+                    <th>
+                        <label @onclick="(() => sortTable(3))">Start</label>
+                    </th>
+                    <th>
+                        <label @onclick="(() => sortTable(4))">End</label>
+                    </th>
+                    <th>
+                        <label @onclick="(() => sortTable(5))">Total Hours</label>
+                    </th>
+                    <th>
+                        <label @onclick="(() => sortTable(6))">Length</label>
+                    </th>
+                    <th>
+                        <label @onclick="(() => sortTable(7))">Primary Ins.</label>
+                    </th>
+                    <th>
+                        <label @onclick="(() => sortTable(8))">Secondary Ins.</label>
+                    </th>
+                    <th></th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                @if (allCourses != null)
+                {
+                    //var firstPage = true;
+                    //if (firstPage)
+                    //{
+                    //    currentPage = "1";
+                    //    firstPage = false;
+                    //}
+                    //iPageStart = (int.Parse(currentPage) * ROW_LIMIT) - ROW_LIMIT;
+                    //iPageEnd = int.Parse(currentPage) * ROW_LIMIT;
+                    //iPageCount = (int)Math.Ceiling(allCourses.Count / (double)ROW_LIMIT);
+
+                    @for (int i = (int.Parse(currentPage) - 1) * itemsPerPage; i < (int.Parse(currentPage) - 1) * itemsPerPage + itemsPerPage && i < allCourses.Count(); i++)
+                    {
+                        //@for (int i = iPageStart; i < iPageEnd && i < allCourses.Count; i++)
+                        //{
+
+                        // DateTime courseStartDate = (DateTime)allCourses[@i].startDate;
+                        // DateTime courseEndDate = (DateTime)allCourses[@i].endDate;
+                        Course course = allCourses[i];
+                        <tr>
+                            <td>
+                                @allCourses[i].courseName
+                            </td>
+                            <td>
+                                <label>@allCourses[i].courseAbbr</label>
+                            </td>
+                            <td>
+                                <label>@allCourses[i].hoursPerWeek</label>
+                            </td>
+                            <td>
+                                @*<label>@courseStartDate.ToString(dateFormat)</label>*@
+                                <label>@allCourses[i].startDate.Value.ToString(dateFormat)</label>
+                            </td>
+                            <td>
+                                @*<label>@courseEndDate.ToString(dateFormat)</label>*@
+                                <label>@allCourses[i].endDate.Value.ToString(dateFormat)</label>
+                            </td>
+                            <td>
+                                <label>@allCourses[i].totalHours</label>
+                            </td>
+                            <td>
+                                <label>@allCourses[i].numOfWeeks Wk.</label>
+                            </td>
+                            <td>
+                                @if (allCourses[i].primaryInstructorIDBindable != 0 && allCourses[i].secondaryInstructor != null)
+                                {
+                                    <label>@allCourses[i].primaryInstructor.lName, @allCourses[i].primaryInstructor.fName</label>
+                                }
+                                else
+                                {
+                                    <label>N/A</label>
+                                }
+                            </td>
+                            <td>
+                                @if (allCourses[i].secondaryInstructorIDBindable != 0 && allCourses[i].secondaryInstructor != null)
+                                {
+                                    <label>@allCourses[i].secondaryInstructor.lName, @allCourses[i].secondaryInstructor.fName</label>
+                                }
+                                else
+                                {
+                                    <label>N/A</label>
+                                }
+
+                            </td>
+                            <td><button class="btn btn-outline-warning" @onclick="(() => editCourse(course))">Edit</button></td>
+                            <td><button class="btn btn-outline-danger" @onclick="(() => confirmDeleteCourse(course))">Delete</button></td>
+                        </tr>
+                    }
+                }
+            </tbody>
+        </Table>
+    </div>
+
+    @if (allCourses.Count > itemsPerPage)
+    {
+        <Pagination>
+            <PaginationItem Disabled="@IsPageNavigationDisabled(PREVIOUS)" @onclick="Previous">
+                <PaginationLink>
+                    <span aria-hidden="true" id="back">Back</span>
+                </PaginationLink>
+            </PaginationItem>
+            @{
+                for (var i = 1; i <= numPages; i++)
+                {
+                    var pageNumberAsString = i.ToString();
+                    <PaginationItem @key="pageNumberAsString" Active="@IsActive(pageNumberAsString)">
+                        <PaginationLink Page="@pageNumberAsString" Clicked="SetActive">
+                            <span aria-hidden="true" id="@pageNumberAsString">@pageNumberAsString</span>
+                        </PaginationLink>
+                    </PaginationItem>
+                }
+            }
+
+            <PaginationItem Disabled="@IsPageNavigationDisabled(NEXT)" @onclick="Next">
+                <PaginationLink>
+                    <span aria-hidden="true" id="next">Next</span>
+                </PaginationLink>
+            </PaginationItem>
+
+        </Pagination>
+    }
+
+    @if (course != null)
+    {
+        <Modal Visible="@(course != null)">
+            <ModalContent Centered="true">
+                <ModalHeader>
+                    <CloseButton />
+                </ModalHeader>
+                <ModalBody>
+
+                    <h1><b>Edit Course</b></h1>
+                    <hr>
+
+                    <EditForm Model="course" class="needs-validation" novalidate OnValidSubmit="@HandleValidSubmit" OnInvalidSubmit="@HandleInvalidSubmit">
+
+                        <DataAnnotationsValidator />
+                        <div class="form-group">
+                            <label for="courseName" class="text-white">Course Full Name</label>
+                            <input type="text" class="form-control col-xl-12" id="courseName" @bind="course.courseName" />
+                            <ValidationMessage For="@(()=>course.courseName)" class="invalid-feedback" />
+                        </div>
+                        <div class="form-group">
+                            <label for="courseAbbr" class="text-white">Course Code</label>
+                            <input type="text" class="form-control" id="courseAbbr" @bind="course.courseAbbr" />
+                            <ValidationMessage For="@(()=>course.courseAbbr)" class="invalid-feedback" />
+                        </div>
+                        <div class="form-group">
+                            <label for="HoursPerWeek" class="text-white">Hours Per Week</label>
+                            <input type="number" class="form-control" id="hoursPerWeek" @bind="course.hoursPerWeek" />
+                            <ValidationMessage For="@(()=>course.hoursPerWeek)" class="invalid-feedback" />
+                        </div>
+                        <div class="form-group">
+                            <label for="creditUnits" class="text-white">Credit Units</label>
+                            <input type="number" class="form-control" id="creditUnits" @bind="course.creditUnits" />
+                            <ValidationMessage For="@(()=>course.creditUnits)" class="invalid-feedback" />
+                        </div>
+                        <div class="form-group">
+                            <label for="startDate" class="text-white">Start Date</label>
+                            <input type="date" class="form-control" id="startDate" @bind="course.startDate" />
+                            <ValidationMessage For="@(()=>course.startDate)" class="invalid-feedback" />
+                        </div>
+                        <div class="form-group">
+                            <label for="endDate" class="text-white">End Date</label>
+                            <input type="date" class="form-control" id="endDate" @bind="course.endDate" />
+                            <ValidationMessage For="@(()=>course.endDate)" class="invalid-feedback" />
+                        </div>
+
+                        <div>
+                            <label class="text-white">Classroom</label>
+                            <select class="form-control" id="classroom" @bind="course.classroomIDBindable">
+                                @foreach (Room r in roomListParent)
+                                {
+                                    <option value="@r.ID">@r.roomNumber</option>
+                                }
+                            </select>
+                            <ValidationMessage For="@(()=>course.classroomIDBindable)" />
+                        </div>
+                        <div>
+                            <label class="text-white">Primary Instructor</label>
+                            <select class="form-control" id="primaryInstructor" @bind="course.primaryInstructorIDBindable">
+                                <option value="0">No Instructor</option>
+                                @foreach (Instructor ins in this.InstructorList)
+                                {
+                                    @if (ins.lName != null)
+                                    {
+                                        <option value="@ins.ID">@ins.lName, @ins.fName.Substring(0, 1)</option>
+                                    }
+                                    else
+                                    {
+                                        <option value="@ins.ID">@ins.fName</option>
+                                    }
+                                }
+                            </select>
+                            <ValidationMessage For="@(()=>course.primaryInstructorIDBindable)" />
+                        </div>
+                        <div>
+                            <label class="text-white">Secondary Instructor</label>
+                            <select class="form-control" id="secondaryInstructor" @bind="course.secondaryInstructorIDBindable">
+                                <option value="0">No Instructor</option>
+                                @foreach (Instructor ins in this.InstructorList)
+                                {
+                                    @if (ins.lName != null)
+                                    {
+                                        <option value="@ins.ID">@ins.lName, @ins.fName.Substring(0, 1)</option>
+                                    }
+                                    else
+                                    {
+                                        <option value="@ins.ID">@ins.fName</option>
+                                    }
+                                }
+                            </select>
+                            <ValidationMessage For="@(()=>course.secondaryInstructorIDBindable)" />
+                        </div>
+                        <Alert Color="Color.Danger" @bind-Visible="@alert"><AlertMessage>Update Failed</AlertMessage></Alert>
+                        <Alert Color="Color.Success" @bind-Visible="@success"><AlertMessage>Updated Successfully</AlertMessage></Alert>
+
+                        <hr>
+
+                        <button type="submit" class="btn btn-outline-success">Update</button>
+
+                    </EditForm>
+                </ModalBody>
+            </ModalContent>
+        </Modal>
+    }
+}
+
+@if (courseToRemove != null)
+{
+    <Modal Visible="@(courseToRemove != null)" Closed="@closeConfirmModal">
+        <ModalContent>
+            <ModalHeader>
+                <h1>Delete Course @courseToRemove.ToString()?</h1>
+                <CloseButton></CloseButton>
+            </ModalHeader>
+            <ModalBody>
+                <p>
+                    Are you sure you want to permanently remove <Strong>Course @courseToRemove.ToString()?</Strong></p>
+                <div id="divButtons" class="d-flex flex-row justify-content-center">
+                    <button class="btn btn-primary m-2 " @onclick="@(e => deleteCourse())">Yes</button>
+                    <button class="btn btn-primary m-2" @onclick="@(e => closeConfirmModal())">No</button>
+                </div>
+            </ModalBody>
+        </ModalContent>
+    </Modal>
+}
+
+
+
+@code {
+
+    public List<Course> allCourses;
+    public Course courseToRemove = null;
+    public EventCallback CancelRequest { get; set; }
+
+    String dateFormat = "MM/dd/yyyy";
+
+    private List<Room> roomListParent;
+    private List<Instructor> InstructorList;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await base.OnInitializedAsync();
+        roomListParent = await db.GetRoomAsync();
+        allCourses = await db.GetAllDepartmentCoursesAsync();
+        numPages = (int)Math.Ceiling(allCourses.Count() / (double)itemsPerPage);
+        InstructorList = await db.GetInstructorsAsync();
+    }
+
+    protected override void OnParametersSet()
+    {
+        base.OnParametersSet();
+    }
+
+
+    /// <summary>
+    /// this method is to set coursetoremove variable with the selected course and used to open the delete modal
+    /// </summary>
+    /// <param name="course"></param>
+    public void confirmDeleteCourse(Course course)
+    {
+        courseToRemove = course;
+    }
+
+    /// <summary>
+    /// This method is to close the delete modal and set the coursetoremove variable to null
+    /// </summary>
+    private void closeConfirmModal()
+    {
+        courseToRemove = null;
+    }
+
+    /// <summary>
+    /// This method is to delete the course that was set on coursetoremove variable
+    /// </summary>
+    public async void deleteCourse()
+    {
+        if (courseToRemove != null)
+        {
+            allCourses = await db.deleteCourseAsync(courseToRemove);
+            courseToRemove = null;
+
+        }
+    }
+
+
+
+    #region Edit Course Modal
+
+    public Course course { get; set; } = null;
+
+    private bool alert = false;
+    private bool success = false;
+
+    private void editCourse(Course editCourse)
+    {
+        course = editCourse;
+    }
+
+    private Task CancelAsync()
+    {
+        return CancelRequest.InvokeAsync(null);
+    }
+
+    private void GoBack()
+    {
+        course = null;
+    }
+
+    private async Task HandleValidSubmit()
+    {
+        success = true;
+        alert = false;
+
+        await db.UpdateCourseAsync(course);
+
+        allCourses = await db.GetAllDepartmentCoursesAsync();
+
+
+        await Task.Delay(3000);
+        success = false;
+    }
+
+    private async Task HandleInvalidSubmit()
+    {
+        alert = true;
+        success = false;
+        await Task.Delay(3000);
+        alert = false;
+
+    }
+
+    #endregion
+
+    #region Pagination
+
+    private const string PREVIOUS = "previous";
+    private const string NEXT = "next";
+    private string currentPage = "1";
+    private int numPages;
+    private int itemsPerPage = 10;
+
+    private bool IsActive(string page)
+        => currentPage == page;
+
+    private bool IsPageNavigationDisabled(string navigation)
+    {
+        if (navigation.Equals(PREVIOUS))
+        {
+            return currentPage.Equals("1");
+        }
+        else if (navigation.Equals(NEXT))
+        {
+            return currentPage.Equals(numPages.ToString());
+        }
+        return false;
+    }
+
+    private void Previous()
+    {
+        var currentPageAsInt = int.Parse(currentPage);
+        if (currentPageAsInt > 1)
+        {
+            currentPage = (currentPageAsInt - 1).ToString();
+        }
+    }
+
+    private void Next()
+    {
+        var currentPageAsInt = int.Parse(currentPage);
+        if (currentPageAsInt < numPages)
+        {
+            currentPage = (currentPageAsInt + 1).ToString();
+        }
+    }
+
+    private void SetActive(string page)
+        => currentPage = page;
+
+    #endregion
+
+    #region Table Sorting
+
+    private int lastPicked = -1;
+    private bool sortAscending = true;
+
+    private void sortTable(int iField)
+    {
+
+        //if (iField == lastPicked)
+        //{
+        //    sortAscending = !sortAscending;
+        //}
+        //else
+        //{
+        //    sortAscending = true;
+        //}
+
+        //lastPicked = iField;
+
+        //if (sortAscending)
+        //{
+        //    sortListAscending(iField);
+        //}
+        //else
+        //{
+        //    sortListDescending(iField);
+        //}
+    }
+
+    private void sortListAscending(int iField)
+    {
+        switch (iField)
+        {
+            case 0:
+                allCourses.Sort((x, y) => x.courseName.CompareTo(y.courseName));
+                break;
+
+            case 1:
+                allCourses.Sort((x, y) => x.courseAbbr.CompareTo(y.courseAbbr));
+                break;
+
+            case 2:
+                allCourses.Sort((x, y) => x.hoursPerWeek.CompareTo(y.hoursPerWeek));
+                break;
+
+            case 3:
+                allCourses.Sort((x, y) => x.startDate >= y.startDate ? 1 : 0);
+                break;
+
+            case 4:
+                allCourses.Sort((x, y) => x.endDate >= y.endDate ? 1 : 0);
+                break;
+
+            case 5:
+                allCourses.Sort((x, y) => x.totalHours.CompareTo(y.totalHours));
+                break;
+
+            case 6:
+                allCourses.Sort((x, y) => x.numOfWeeks.CompareTo(y.numOfWeeks));
+                break;
+
+            case 7:
+                allCourses.Sort((x, y) => x.primaryInstructorIDBindable.CompareTo(y.primaryInstructorIDBindable));
+                break;
+
+            case 8:
+                allCourses.Sort((x, y) => x.secondaryInstructorIDBindable.CompareTo(y.secondaryInstructorIDBindable));
+                break;
+        }
+    }
+    private void sortListDescending(int iField)
+    {
+        switch (iField)
+        {
+            case 0:
+                allCourses.Sort((x, y) => y.courseName.CompareTo(x.courseName));
+                break;
+
+            case 1:
+                allCourses.Sort((x, y) => y.courseAbbr.CompareTo(x.courseAbbr));
+                break;
+
+            case 2:
+                allCourses.Sort((x, y) => y.hoursPerWeek.CompareTo(x.hoursPerWeek));
+                break;
+
+            case 3:
+                allCourses.Sort((x, y) => y.startDate >= x.startDate ? 1 : 0);
+                break;
+
+            case 4:
+                allCourses.Sort((x, y) => y.endDate >= x.endDate ? 1 : 0);
+                break;
+
+            case 5:
+                allCourses.Sort((x, y) => y.totalHours.CompareTo(x.totalHours));
+                break;
+
+            case 6:
+                allCourses.Sort((x, y) => y.numOfWeeks.CompareTo(x.numOfWeeks));
+                break;
+
+            case 7:
+                allCourses.Sort((x, y) => y.primaryInstructorIDBindable.CompareTo(x.primaryInstructorIDBindable));
+                break;
+
+            case 8:
+                allCourses.Sort((x, y) => y.secondaryInstructorIDBindable.CompareTo(x.secondaryInstructorIDBindable));
+                break;
+        }
+    }
+
+    #endregion
+}

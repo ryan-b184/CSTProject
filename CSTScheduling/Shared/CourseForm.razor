@@ -1,0 +1,137 @@
+
+@using System.Linq
+@using Blazorise
+@using Microsoft.EntityFrameworkCore 
+@using CSTScheduling.Data.Services
+@inject CstScheduleDbService db
+
+
+<EditForm Model="course" class="needs-validation" novalidate OnValidSubmit="@HandleValidSubmit" OnInvalidSubmit="@HandleInvalidSubmit">
+
+    <DataAnnotationsValidator />
+    <div class="form-group">
+        <label for="courseName" class="text-white">Course Full Name</label>
+        <input type="text" class="form-control col-xl-12" id="courseName" @bind="course.courseName" />
+       @* <ValidationMessage For="@(()=>course.courseName)" class="invalid-feedback" />*@
+    </div>
+    <div class="form-group">
+        <label for="courseAbbr" class="text-white">Course Code</label>
+        <input type="text" class="form-control" id="courseAbbr" @bind="course.courseAbbr" />
+        @*<ValidationMessage For="@(()=>course.courseAbbr)" class="invalid-feedback" />*@
+    </div>
+    <div class="form-group">
+        <label for="HoursPerWeek" class="text-white">Hours Per Week</label>
+        <input type="number" class="form-control" id="hoursPerWeek" @bind="course.hoursPerWeek" />
+        @*<ValidationMessage For="@(()=>course.hoursPerWeek)" class="invalid-feedback" />*@
+    </div>
+    <div class="form-group">
+        <label for="creditUnits" class="text-white">Credit Units</label>
+        <input type="number" class="form-control" id="creditUnits" @bind="course.creditUnits" />
+        @*<ValidationMessage For="@(()=>course.creditUnits)" class="invalid-feedback" />*@
+    </div>
+    <div class="form-group">
+        <label for="startDate" class="text-white">Start Date</label>
+        <input type="date" class="form-control" id="startDate" @bind="course.startDate" />
+        @*<ValidationMessage For="@(()=>course.startDate)" class="invalid-feedback" />*@
+    </div>
+    <div class="form-group">
+        <label for="endDate" class="text-white">End Date</label>
+        <input type="date" class="form-control" id="endDate" @bind="course.endDate" />
+        @*<ValidationMessage For="@(()=>course.endDate)" class="invalid-feedback" />*@
+    </div>
+
+    <div>
+        <label class="text-white">Classroom</label>
+        <select class="form-control" id="classroom" @bind="course.classroomIDBindable" >
+            @foreach (Room r in roomList)
+            {
+                <option value="@r.ID">@r.roomNumber</option>
+            }
+        </select>
+        @*<ValidationMessage For="@(()=>course.classroomIDBindable)" />*@
+    </div>
+    <div>
+        <label class="text-white">Primary Instructor</label>
+        <select class="form-control" id="primaryInstructor" @bind="course.primaryInstructorIDBindable" >
+                <option value="0">No Instructor</option>
+            @foreach (Instructor ins in db.InstructorList)
+            {
+                <option value="@ins.ID">@ins.fName @ins.lName</option>
+                
+            }
+        </select>
+        @*<ValidationMessage For="@(()=>course.primaryInstructorIDBindable)" />*@
+    </div>
+    <div>
+        <label class="text-white">Secondary Instructor</label>
+        <select class="form-control" id="secondaryInstructor" @bind="course.secondaryInstructorIDBindable">
+                <option value="0">No Instructor</option>
+            @foreach (Instructor ins in db.InstructorList)
+            {
+                <option value="@ins.ID">@ins.fName @ins.lName</option>
+            }
+        </select>
+        @*<ValidationMessage For="@(()=>course.secondaryInstructorIDBindable)" />*@
+    </div>
+    <Alert Color="Color.Danger" @bind-Visible="@alert"><AlertMessage>Failed to submit</AlertMessage></Alert>
+    <Alert Color="Color.Success" @bind-Visible="@success"><AlertMessage>Successfully added</AlertMessage></Alert>
+    <button type="submit">Add</button>
+</EditForm>
+
+@code {
+
+    [Parameter]
+    public Course course { get; set; }
+
+    [Parameter]
+    public List<Room> roomList { get; set; }
+
+    [Parameter]
+    public List<Instructor> InstructorList { get; set; }
+
+    [Parameter]
+    public EventCallback CancelRequest { get; set; }
+
+
+    private void Reset() { course = new Course { semesterID = db.CurrentSemester.SemesterID}; }
+    private bool alert = false;
+    private bool success = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        //db.InstructorList.Add(primaryinstructor);
+        //db.InstructorList.Add(secondaryinstructor);
+
+        course = new Course();
+        if(db.CurrentSemester.StartDate != null)
+        {
+            course.startDate = db.CurrentSemester.StartDate;
+            course.endDate = db.CurrentSemester.EndDate;
+        }
+
+        course.semesterID = db.CurrentSemester.SemesterID;
+
+        await base.OnInitializedAsync();
+    }
+
+    private Task CancelAsync()
+    {
+        return CancelRequest.InvokeAsync(null);
+    }
+
+    private async Task HandleValidSubmit()
+    {
+        success = true;
+        alert = false;
+
+        await db.AddCourseAsync(course);
+
+    }
+
+    private async Task HandleInvalidSubmit()
+    {
+        alert = true;
+        success = false;
+    }
+}
+

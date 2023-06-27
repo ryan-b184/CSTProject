@@ -1,0 +1,55 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net5.0</TargetFramework>
+
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Remove="E2ETests\**" />
+    <Compile Remove="Services\**" />
+    <EmbeddedResource Remove="E2ETests\**" />
+    <EmbeddedResource Remove="Services\**" />
+    <None Remove="E2ETests\**" />
+    <None Remove="Services\**" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Blazorise" Version="0.9.5.2" />
+    <PackageReference Include="Blazorise.Bootstrap" Version="0.9.5.2" />
+    <PackageReference Include="Blazorise.Charts" Version="0.9.5.2" />
+    <PackageReference Include="Blazorise.Components" Version="0.9.5.2" />
+    <PackageReference Include="Blazorise.DataGrid" Version="0.9.5.2" />
+    <PackageReference Include="Blazorise.Icons.FontAwesome" Version="0.9.5.2" />
+    <PackageReference Include="Blazorise.TreeView" Version="0.9.5.2" />
+    <PackageReference Include="bunit" Version="1.2.49" />
+    <PackageReference Include="bunit.core" Version="1.2.49" />
+    <PackageReference Include="bunit.web" Version="1.2.49" />
+
+    <PackageReference Include="ExpressiveAnnotations" Version="2.9.6" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.InMemory" Version="5.0.0" />
+
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="5.0.11" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Tools" Version="5.0.11">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="16.11.0" />
+    <PackageReference Include="NUnit" Version="3.13.2" />
+    <PackageReference Include="NUnit3TestAdapter" Version="4.0.0" />
+    <PackageReference Include="Select.HtmlToPdf.NetCore" Version="22.1.0" />
+    <PackageReference Include="xunit" Version="2.4.1" />
+  </ItemGroup>
+
+  <ItemGroup>
+
+    <Folder Include="UnitTests\E2ETests\" />
+  </ItemGroup>
+
+
+  <ItemGroup>
+    <ProjectReference Include="..\CSTScheduling\CSTScheduling.csproj" />
+  </ItemGroup>
+
+</Project>

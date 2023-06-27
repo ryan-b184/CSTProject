@@ -1,0 +1,68 @@
+﻿@page "/schedConflict"
+@using CSTScheduling.Data.Services
+@using CSTScheduling.Shared
+@inject CstScheduleDbService DbService
+
+<Modal data-keyboard="false" tab-index="-1" @ref="modalRef" @bind-Visible="modalVisable" Closing="@OnModalClosing">
+    <ModalContent Size="ModalSize.Default">
+        <ModalHeader>
+            <h2>Conflict List</h2>
+            <CloseButton @onclick="() => { ToggleShowModal(false); }" />
+        </ModalHeader>
+        <ModalBody>
+            <div id="mErrMsg">
+                <ul>
+                    @foreach (string err in errList)
+                    {
+                        <li class="text-danger">@err</li>
+                    }
+                </ul>
+                <button type="button" class="btn btn-outline-success" id="btnAllow" @onclick="() => { ToggleShowModal(true); }">Allow</button>
+                <button type="button" class="btn btn-outline-danger" id="btnDeny" @onclick="() => { ToggleShowModal(false); }">Deny</button>
+            </div>
+        </ModalBody>
+    </ModalContent>
+</Modal>
+
+
+
+@code
+{
+    //take in list of strings to display
+    //send back true/false for allow/deny button, or if exiting modal
+    [Parameter]
+    public CISR cisr { get; set; }
+
+    [Parameter]
+    public List<string>? errList { get; set; }
+
+    [Parameter]
+    public Action<bool, CISR> canSave { get; set; }
+
+
+    #region Modal Closing behaviour
+    private bool modalVisable = true;
+    private Modal modalRef;
+    private bool cancelClose = true;
+
+    private void ToggleShowModal(bool bSave)
+    {
+        canSave(bSave, cisr);
+
+        cancelClose = false;
+
+        modalVisable = false;
+    }
+
+    private Task OnModalClosing(ModalClosingEventArgs e)
+    {
+        // just set Cancel to prevent modal from closing
+        e.Cancel = cancelClose;
+        //&& e.CloseReason == CloseReason.UserClosing;
+        //e.Cancel = cancelClose || e.CloseReason != CloseReason.UserClosing;
+
+
+        return Task.CompletedTask;
+    }
+    #endregion
+}

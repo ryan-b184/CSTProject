@@ -1,0 +1,157 @@
+@page "/InstructorUpdate"
+@using CSTScheduling.Data.Services
+@inject CstScheduleDbService dbService
+@inject NavigationManager nv
+
+<div class="col-12">
+    <h1><b>Edit Instructor</b></h1>
+    <hr />
+
+    <EditForm Model="@NewInstructor" OnValidSubmit="@HandleValidSubmit" OnInvalidSubmit="@HandleInvalidSubmit">
+
+        <DataAnnotationsValidator />
+
+        <div class="col-12 row">
+            <label for="insEmail">Email :</label>
+            <input type="text" class="form-control" id="insEmail" @bind="NewInstructor.email" />
+            <ValidationMessage For="@(() => NewInstructor.email)" />
+        </div>
+        <div class="col-12 row">
+            <label for="insFName">First Name :</label>
+            <input type="text" class="form-control" id="insFName" @bind="NewInstructor.fName" />
+            <ValidationMessage For="@(() => NewInstructor.fName)" />
+        </div>
+        <div class="col-12 row">
+            <label for="insLName">Last Name :</label>
+            <input type="text" class="form-control" id="insLName" @bind="NewInstructor.lName" />
+            <ValidationMessage For="@(() => NewInstructor.lName)" />
+        </div>
+        <div class="col-12 row">
+            <label for="insPhoneNum">Phone Number :</label>
+            <input type="text" class="form-control" id="insPhoneNum" @bind="NewInstructor.phoneNum" />
+            <ValidationMessage For="@(() => NewInstructor.phoneNum)" />
+        </div>
+        <div class="col-12 row">
+            <label for="insOfficeNum">Office Number :</label>
+            <input type="text" class="form-control" id="insOfficeNum" @bind="NewInstructor.officeNum" />
+            <ValidationMessage For="@(() => NewInstructor.officeNum)" />
+        </div>
+        <div class="col-12 row">
+            <label for="insNote">Note :</label>
+            <input type="text" class="form-control" id="insNote" @bind="NewInstructor.note" />
+            <ValidationMessage For="@(() => NewInstructor.note)" />
+        </div>
+
+        @*<div class="row">
+                <div class="col-3">
+                    <div class="text-center p-3 mb-3">
+                        <button class="btn btn-primary" @onclick="SaveInstructor">Save</button>
+                    </div>
+                    <div class="text-center p-3 mb-3">
+                        <button class="btn btn-primary" @onclick="ClearFields">Clear</button>
+                    </div>
+                    <div class="text-center p-3 mb-3">
+                        <button class="btn btn-primary" @onclick="GoBack">Go Back</button>
+                    </div>
+                </div>
+            </div>*@
+
+        <hr>
+
+        <div class="row">
+                    <button type="submit" class="btn btn-outline-success">Update</button>
+                    <button type="reset" class="btn btn-outline-danger" @onclick="@Cancel">Cancel</button>
+        </div>
+    </EditForm>
+
+    @if (displayInstructorAddedToDB)
+    {
+        <div class="row bg-success text-white" style="margin-top:10px; height:40px">
+            <label class="p-2">Instructor updated</label>
+        </div>
+    }
+    @if (duplicateEmail)
+    {
+        <div class="row bg-warning text-white" style="margin-top:10px; height:40px">
+            <label class="p-2">Unable to change email.. Currently</label>
+        </div>
+    }
+</div>
+<br />
+
+@code{
+
+    List<Instructor> Instructors = new List<Instructor>();
+
+    //[Parameter]
+    //public EventCallback<bool> SaveResult { get; set; }
+
+    [Parameter]
+    public EventCallback<Instructor> EditIns { get; set; }
+
+    [Parameter]
+    public Instructor NewInstructor { get; set; }
+
+    private bool Error;
+
+    [Parameter]
+    public bool Busy { get; set; }
+
+    bool displayValidationErrorMessages = false;
+    bool displayInstructorAddedToDB = false;
+    string currentEmail = "";
+    bool duplicateEmail = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await ReloadInstructors();
+        currentEmail = NewInstructor.email;
+    }
+
+    private async void HandleValidSubmit(EditContext context)
+    {
+        displayValidationErrorMessages = false;
+        duplicateEmail = false;
+
+        //check if email has been changed from original, if so check if email exists
+
+        //if (NewInstructor.email != currentEmail && checkIfInstructorExists())
+        if (NewInstructor.email != currentEmail)
+        {
+            duplicateEmail = true;
+        }
+        else
+        {
+            displayInstructorAddedToDB = true;
+            await EditInstructor();
+        }
+    }
+
+    private bool checkIfInstructorExists()
+    {
+        return Instructors.Exists(e => e.email == NewInstructor.email);
+    }
+
+    private void HandleInvalidSubmit(EditContext context)
+    {
+        displayValidationErrorMessages = true;
+        displayInstructorAddedToDB = false;
+        duplicateEmail = false;
+    }
+
+    private async Task ReloadInstructors()
+    {
+        Instructors = await dbService.GetInstructorsAsync();
+    }
+
+    private async Task EditInstructor()
+    {
+        await dbService.UpdateInstructorAsync(NewInstructor);
+    }
+
+    private void Cancel()
+    {
+        Busy = true;
+        nv.NavigateTo("/instructor");
+    }
+}

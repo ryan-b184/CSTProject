@@ -1,0 +1,565 @@
+﻿@using CSTScheduling.Data.Services
+@using CSTScheduling.Components
+@using CSTScheduling.Shared
+@using CSTScheduling.Utilities
+@using Blazorise.DataGrid
+@inject CstScheduleDbService dbService
+@inject NavigationManager nv
+@inject IJSRuntime jsRuntime
+
+@if (renderDataList)
+{
+    <datalist id="courseDataList">
+        @foreach (var kv in BlazorDataList<Course>.TValueDictionary)
+        {
+            <option value="@kv.Value"></option>
+        }
+    </datalist>
+
+    <datalist id="roomDataList">
+        @foreach (var kv in BlazorDataList<Room>.TValueDictionary)
+        {
+            <option value="@kv.Value"></option>
+        }
+    </datalist>
+
+    <datalist id="instructorDataList">
+        @foreach (var kv in BlazorDataList<Instructor>.TValueDictionary)
+        {
+            <option value="@kv.Value"></option>
+        }
+    </datalist>
+}
+@if (dbService.CurrentDepartment.ID == 0)
+{
+    <h3>No department selected.</h3>
+}
+else
+{
+    <h1 style="background-image: linear-gradient(45deg, #763898 0%, #272b30 60%); padding-left: 1em; color: #aaa;">@datePointList[currentDatePoint].Value.ToString("MMM dd") - @datePointList[currentDatePoint + 1].Value.ToString("MMM dd")</h1>
+    <div>
+        <div class="row">
+            <div class="col-8">
+                <table>
+                    <thead style="text-align: center;">
+                    <th scope="col">
+                        Time
+                    </th>
+                    <th scope="col">
+                        Monday
+                    </th>
+                    <th scope="col">
+                        Tuesday
+                    </th>
+                    <th scope="col">
+                        Wednesday
+                    </th>
+                    <th scope="col">
+                        Thrusday
+                    </th>
+                    <th scope="col">
+                        Friday
+                    </th>
+                    </thead>
+                    <tbody>
+                        @if (cisrDictionary == null)
+                        {
+                            <p>Loading ..</p>
+                        }
+                        else
+                        {
+                            for (int time = semester.StartTime; time < semester.EndTime; time++)
+                            {
+                                <tr>
+                                    <th>
+                                        <p>@time:00</p>
+                                    </th>
+                                    @{
+                                        for (DayOfWeek day = DayOfWeek.Monday; day < DayOfWeek.Saturday; day++)
+                                        {
+                                            var tempCisr = cisrDictionary[(time, day)];
+                                            EditContext tempContext = new EditContext(tempCisr);
+
+
+                                            <td @onclick="e => PasteCell(tempCisr)" @onclick:stopPropagation="true" class="border-top-0 p-0">
+
+                                                <div class="card bg-white text-black @(tempCisr.isSelected ? "dashed-border"  : "no-border")"
+                                                     style="height: 6.7rem; width: 12.5rem">
+
+                                                    <div class="card-body @(tempCisr.isEditing ? "editing" : "")"
+                                                         style="padding-top: 0.1rem; padding-bottom: 0.1rem; padding-left: 0.1rem; padding-right: 0.1rem">
+
+                                                        @if (this.semester != null)
+                                                        {
+                                                            <EditForm EditContext="@tempContext">
+                                                                <div style="display: flex; justify-content: space-between; padding-right: 4px">
+
+                                                                    <!-- COURSE -->
+
+                                                                    <InputDataListSelect @bind-Value="tempCisr.courseIDBindable"
+                                                                                         style="border: 0; outline: 0; width: 10rem;" class="card-title my-0" TValue="int"
+
+                                                                                         @onclick:stopPropagation="true" @onblur="e => LoadDefaultsAndSave(tempCisr)"
+                                                                                         DataListID="courseDataList" DataList="BlazorDataList<Course>.TValueDictionary" />
+
+                                                                    <!-- TOOLBAR(DELETE) -->
+                                                                    @if (tempCisr.courseIDBindable != 0)
+                                                                    {
+                                                                        <span @onclick="(e => DeleteCell(tempCisr))" @onclick:stopPropagation="true"
+                                                                              class="oi oi-trash"
+                                                                              style="@(tempCisr.isSelected ? "visibility:hidden" : "")">
+                                                                        </span>
+                                                                    }
+                                                                </div>
+                                                                <div style="@(tempCisr.courseIDBindable == 0 ? "visibility:hidden; display: flex; justify-content: space-between; padding-right: 4px;"
+                                                                                                     : "display: flex; justify-content: space-between; padding-right: 4px;")">
+
+                                                                    <!-- ROOM -->
+
+                                                                    <InputDataListSelect placeholder="Room.." @bind-Value="tempCisr.roomIDBindable"
+                                                                                         style="border: 0; outline:0; width: 10rem;" class="card-title my-0" TValue="int"
+                                                                                         @onclick:stopPropagation="true" @onblur="e => CheckForConflicts(tempCisr)"
+
+                                                                                         DataListID="roomDataList" DataList="BlazorDataList<Room>.TValueDictionary" />
+
+                                                                    <!-- TOOLBAR(COPY) -->
+                                                                    <span @onclick="(e => CopyCell(tempCisr))" @onclick:stopPropagation="true"
+                                                                          class="fas fa-solid fa-clone"
+                                                                          style="@(this.global_copy && !tempCisr.isSelected ? "visibility:hidden" : "")">
+                                                                    </span>
+                                                                </div>
+
+                                                                <!-- PRIMARY-INS -->
+
+                                                                <InputDataListSelect placeholder="Instructor.." @bind-Value="tempCisr.primaryInstructorIDBindable"
+                                                                                     style=" @(tempCisr.courseIDBindable == 0 ? "visibility:hidden; border: 0; outline:0;width: 10rem; " : "border: 0; outline:0;width: 10rem;")"
+
+                                                                                     class="card-title my-0" TValue="int"
+                                                                                     @onclick:stopPropagation="true" @onblur="e => CheckForConflicts(tempCisr)"
+                                                                                     DataListID="instructorDataList" DataList="BlazorDataList<Instructor>.TValueDictionary" />
+
+                                                                <div style="@(tempCisr.primaryInstructorIDBindable == 0 ? "visibility:hidden" : "")">
+
+                                                                    <!-- SECONDARY-INS -->
+                                                                    <InputDataListSelect placeholder="..." @bind-Value="tempCisr.secondaryInstructorIDBindable"
+                                                                                         style="border: 0; outline: 0; width: 10rem;" class="card-title my-0" TValue="int"
+                                                                                         @onclick:stopPropagation="true" @onblur="e => CheckForConflicts(tempCisr)"
+
+                                                                                         DataListID="instructorDataList" DataList="BlazorDataList<Instructor>.TValueDictionary" />
+                                                                </div>
+                                                            </EditForm>
+                                                        }
+                                                    </div>
+                                                </div>
+                                            </td>
+                                        }
+                                    }
+                                </tr>
+                            }
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        @if (errList != null && errList.Count > 0)
+        {
+            <ScheduleConflictModal errList="errList" cisr="currentCisr" canSave="SaveMiddle" />
+        }
+    </div>
+}
+
+
+
+@code
+{
+    #region Parameters
+    [Parameter]
+    public Semester semester { get; set; }
+
+    [Parameter]
+    public List<Course> semCourses { get; set; }
+
+    [Parameter]
+    public List<DateTime?> datePointList { get; set; }
+
+    [Parameter]
+    public int currentDatePoint { get; set; }
+
+    [Parameter]
+    public bool renderDataList { get; set; }
+    #endregion
+
+    #region Error Props
+    public static CISR currentCisr;
+    public static List<string> errList;
+    #endregion
+
+    #region ScheduleConflictChecks
+    /// <summary>
+    /// Checks system for instructor, room, and course overscheduling conflicts when attempting to save given CISR
+    /// If no conflicts arise, allowed to proceed and return true.
+    /// If conflicts do arise, fire modal to prompt user to allow for overriding
+    /// </summary>
+    /// <param name="cisr">Item to check for conflict</param>
+    /// <returns>True if allowed to proceed, false if denying conflict</returns>
+    private async Task CheckForConflicts(CISR cisr)
+    {
+        currentCisr = cisr;
+        //check for conflicts, if they exist then open modal and check for override
+        errList = await dbService.CheckAllConflicts(cisr);
+
+
+        //modal will appear here if list not empty, else we're good to save
+        if (errList.Count == 0) SaveMiddle(true, cisr);
+    }
+
+    //temp save
+    private async void SaveMiddle(bool canSave, CISR cisr)
+    {
+        // clear list
+        errList = null;
+
+        // only needed to be set for modal parameter, no longer needed
+        currentCisr = null;
+
+        if (canSave)
+        {
+            // save schedule (cisrSave)
+            saveCISR(cisr);
+        }
+        else
+        {
+            // use local version for this
+            CISR CISRtocopy = await dbService.GetCisrOldAsync(cisr);
+
+            // Paste the CISRtocopy values into the current cisr
+            cisr.courseIDBindable = CISRtocopy.courseIDBindable;
+            cisr.roomIDBindable = CISRtocopy.roomIDBindable;
+            cisr.primaryInstructorIDBindable = CISRtocopy.primaryInstructorIDBindable;
+            cisr.secondaryInstructorIDBindable = CISRtocopy.secondaryInstructorIDBindable;
+        }
+        // --- DO NOT DELETE --- //
+        StateHasChanged(); // This allows the Allow/Deny conflict handlers to work during global_copy mode.
+                           // --- END OF DO NOT DELETE --- //
+    }
+    #endregion
+
+    #region Cell behaviour - All handlers and variables
+    [Parameter]
+    public CISR CISRtocopy { get; set; } = new CISR
+    {
+        course = new(),
+        room = new(),
+        primaryInstructor = new(),
+        secondaryInstructor = new()
+    };
+
+    // This flag is used to enable/disable the PasteCell handler, and flag for alternate style markups
+    private bool global_copy = false;
+
+    /// <summary>
+    /// Passes the given CISR object to the Database Service for saving after some basic checks
+    /// Checks for the
+    /// <br />Ensures that the given Course start and end dates fall within the current DateRange for the schedule
+    /// </summary>
+    /// <param name="tempCisr"></param>
+    public void saveCISR(CISR tempCisr)
+    {
+        // Updating
+        if (tempCisr.ID > 0)
+        {
+            dbService.SaveCISR(tempCisr);
+        }
+        else // Saving new
+        {
+            if (tempCisr.courseIDBindable > 0)
+            {
+                Course cisrCourse = semCourses.Find(c => c.ID == tempCisr.courseIDBindable);
+
+                if (cisrCourse.startDate <= datePointList[currentDatePoint] && cisrCourse.endDate >= datePointList[currentDatePoint + 1])
+                {
+                    dbService.SaveCISR(tempCisr);
+                }
+            }
+        }
+    }
+
+    /// <summary>
+    /// This event handler toggles global_copy mode on/off when a user clicks the Copy icon.
+    /// When global_copy mode is on, the cisr of the currently selected cell (dashed borders)
+    /// is saved to a variable CISRtocopy.
+    /// The onclick handler PasteCell(CISR) pastes the variable CISRtocopy.
+    ///
+    /// </summary>
+    /// <param name="cisr">The cisr of the current cell being interacted with.</param>
+    private void CopyCell(CISR obCISR)
+    {
+        // If not already selected,
+        if (!obCISR.isSelected)
+        {
+            // Select, and enable global_copy (which enables the PasteCell handler)
+            obCISR.isSelected = true;
+            global_copy = true;
+            // Store this cisr (excluding the day/time)
+            CISRtocopy = new CISR
+            {
+                courseIDBindable = obCISR.courseIDBindable,
+                roomIDBindable = obCISR.roomIDBindable,
+                primaryInstructorIDBindable = obCISR.primaryInstructorIDBindable,
+                secondaryInstructorIDBindable = obCISR.secondaryInstructorIDBindable
+            };
+        }
+        else
+        {
+            // Deselect, disable global_copy, and reset variable CISRtocopy
+            obCISR.isSelected = false;
+            global_copy = false;
+            CISRtocopy = new CISR();
+        }
+    }
+
+    /// <summary>
+    /// This event handler pastes the currently highlighted cell into a new cell
+    /// when a user single-clicks into new cell.
+    /// NOTE: This event handler only applies when global_copy is enabled!
+    /// (ie. when a user clicks the copy icon and selects a cell).
+    ///
+    /// </summary>
+    /// <param name="cisr">The cisr of the current cell being interacted with.</param>
+    private async Task PasteCell(CISR cisr)
+    {
+        if (this.global_copy)
+        {
+            // Paste the CISRtocopy values into the current cisr
+            cisr.courseIDBindable = CISRtocopy.courseIDBindable;
+            cisr.roomIDBindable = CISRtocopy.roomIDBindable;
+            cisr.primaryInstructorIDBindable = CISRtocopy.primaryInstructorIDBindable;
+            cisr.secondaryInstructorIDBindable = CISRtocopy.secondaryInstructorIDBindable;
+            await CheckForConflicts(cisr);
+        }
+    }
+
+    /// <summary>
+    /// This event handler deletes the cell when a user single-clicks the X button.
+    /// NOTE: This event handler cannot apply to a cell that has enabled copy_mode
+    /// (ie. the cell with dashed borders around it).
+    ///
+    /// </summary>
+    /// <param name="cisr">The cisr of the current cell being interacted with.</param>
+    private void DeleteCell(CISR obCISR)
+    {
+        if (!obCISR.isSelected)
+        {
+            if (obCISR.courseIDBindable > 0)
+            {
+                Course cisrCourse = semCourses.Find(c => c.ID == obCISR.courseIDBindable);
+
+                if (cisrCourse.startDate <= datePointList[currentDatePoint] && cisrCourse.endDate >= datePointList[currentDatePoint + 1])
+                {
+                    // Mark CISR for deletion
+                    obCISR.courseIDBindable = 0;
+                    obCISR.roomIDBindable = 0;
+                    obCISR.primaryInstructorIDBindable = 0;
+                    obCISR.secondaryInstructorIDBindable = 0;
+
+                    dbService.SaveCISR(obCISR);
+
+                    obCISR.ID = 0;
+                }
+            }
+            else
+            {
+                // Mark CISR for deletion
+                obCISR.courseIDBindable = 0;
+                obCISR.roomIDBindable = 0;
+                obCISR.primaryInstructorIDBindable = 0;
+                obCISR.secondaryInstructorIDBindable = 0;
+                dbService.SaveCISR(obCISR);
+            }
+        }
+    }
+    /// <summary>
+    /// This event handler loads the default Rooms and Instructors when a user types in a Course.
+    /// At the end, this handler chains to the saveCISR method, passing along the 'cisr' parameter
+    /// for the update/save operation.
+    ///
+    ///</summary>
+    /// <param name="cisr">The cisr of the current cell being interacted with.</param>
+    private async Task LoadDefaultsAndSave(CISR cisr)
+    {
+        /*
+            Prevent LoadDefaultsAndSave() from firing if the ScheduleConflictModal is already open.
+            (This could happen if the user tabbed to another cell while the Modal is already open.)
+
+            So if currentCisr != null, that means the ScheduleConflictModal is still waiting for a response.
+            (Calling LoadDefaultsAndSave at this point would cause the Modal to re-render on the new CISR that was tabbed to.)
+        */
+        if (currentCisr == null)
+        {
+            int course_key = cisr.courseIDBindable;
+            Course course = null;
+
+            // If course exists,
+            if (course_key != 0)
+            {
+                // Get Course from dictionary, and all foreign keys/objects from it
+                course = BlazorDataList<Course>.TValueObject[course_key];
+                int room_key = course.classroomIDBindable;
+                int ins1_key = course.primaryInstructorIDBindable;
+                int ins2_key = course.secondaryInstructorIDBindable;
+                Room room;
+                Instructor ins1, ins2;
+
+                // If Course has a default Room,
+                if (room_key != 0)
+                {
+                    // Get default Room from dictionary, and pass to cisr object
+                    room = BlazorDataList<Room>.TValueObject[room_key];
+                    cisr.roomIDBindable = room.ID;
+                }
+                // If Course has a default PrimaryIns,
+                if (ins1_key != 0)
+                {
+                    // Get default PrimaryIns from dictionary, and pass to cisr object
+                    ins1 = BlazorDataList<Instructor>.TValueObject[ins1_key];
+                    cisr.primaryInstructorIDBindable = ins1.ID;
+                }
+                // If Course has a default SecondaryIns,
+                if (ins2_key != 0)
+                {
+                    // Get default SecondaryIns from dictionary, and pass to cisr object
+                    ins2 = BlazorDataList<Instructor>.TValueObject[ins2_key];
+                    cisr.secondaryInstructorIDBindable = ins2.ID;
+                }
+            }
+            await this.CheckForConflicts(cisr);// Chain to the save handler
+        }
+    }
+
+    #endregion
+
+    #region Schedule Grid Variables
+
+    // Base dictionary
+    public Dictionary<(int, DayOfWeek), CISR> cisrDictionary { get; set; }
+
+    // List of CISR that span the semester
+    private List<CISR> cisrList = new List<CISR>();
+
+    public bool editingInProgress = false;
+    private string mode = "";// Toggles cell selection behaviour
+
+
+    public String group = "";
+    public List<Semester>
+    semList = new();
+    string boundSemID = "";
+
+    #endregion
+
+    #region selectData
+    public Course[] courseArray;
+    #endregion
+
+    /// <summary>
+    /// Called only once when the component is initialized, returns the list for the Instructors and Rooms to be used for building CISR.
+    /// </summary>
+    /// <returns></returns>
+    protected async override Task OnInitializedAsync()
+    {
+        BlazorDataList<Instructor>.TValueList = await dbService.GetInstructorsAsync();
+        BlazorDataList<Room>.TValueList = await dbService.GetRoomAsync();
+    }
+
+    /// <summary>
+    /// This method called whenever one of the given parameters is changed.
+    /// <br />It updates the courses available for CISR objects, and calls the makeMatrix() method.
+    /// </summary>
+    protected async override void OnParametersSet()
+    {
+        global_copy = false;
+        //passing the semester object to the component
+        if (this.semester != null)
+        {
+            BlazorDataList<Course>.TValueList = await dbService.GetCourseBySemesterDatePoint(this.semester, datePointList[currentDatePoint].Value, datePointList[currentDatePoint + 1].Value);
+            makeMatrix();
+        }
+    }
+
+    /// <summary>
+    /// This method creates a new Dictionary((Time,Day),CISR) to hold the CISR objects of a given schedule.
+    /// <br />It First Creates a Dictionary of size DayLength * Number of Days of blank CISRs
+    /// <br />It then Replaces some of those CISRs with ones that span the entire semester
+    /// <br />It then Replaces blank CISRs with CISRs that span that specific date range
+    /// </summary>
+    private async void makeMatrix()
+    {
+        cisrDictionary = new Dictionary<(int, DayOfWeek), CISR>();
+
+        for (int time = semester.StartTime; time < semester.EndTime; time++)
+        {
+            for (DayOfWeek day = DayOfWeek.Monday; day < DayOfWeek.Saturday; day++)
+            {
+                cisrDictionary[(time, day)] = new CISR { ID = 0, Day = day, Time = time, isSelected = false, courseIDBindable = 0 };
+            }
+        }
+
+        if (semester.StartDate != null && semester.EndDate != null)
+        {
+
+            this.cisrList = await dbService.GetSemesterCISR(this.semester);
+
+            List<CISR> datePointCisrList = new List<CISR>();
+            datePointCisrList = await dbService.GetDatePointCISR(datePointList[currentDatePoint].Value, datePointList[currentDatePoint + 1].Value, semester);
+
+            foreach (CISR cisr in cisrList)
+            {
+                cisrDictionary[(cisr.Time, cisr.Day.Value)] = cisr;
+            }
+            foreach (CISR cisr in datePointCisrList)
+            {
+                if (cisrDictionary[(cisr.Time, cisr.Day.Value)].ID == 0)
+                {
+                    cisrDictionary[(cisr.Time, cisr.Day.Value)] = cisr;
+                }
+            }
+        }
+    }
+
+    /// <summary>
+    /// Parses the given semester ID for use in the component
+    /// </summary>
+    /// <param name="SemesterID"></param>
+    /// <returns>String</returns>
+    private string parseSemesterID(string SemesterID)
+    {
+        string[] parsedValues = SemesterID.Split(',');
+        string groupLetter = Char.ConvertFromUtf32(int.Parse(parsedValues[3]) + 64);
+        this.group = groupLetter;
+        return "Semester " + parsedValues[2] + " " + groupLetter;
+    }
+
+
+    /// <summary>
+    /// To Be Implemented
+    /// </summary>
+    /// <returns></returns>
+    private async Task HandleValidSubmit()
+    {
+
+
+    }
+
+    /// <summary>
+    /// To Be Implemented
+    /// </summary>
+    /// <returns></returns>
+    private async Task HandleInvalidSubmit()
+    {
+
+    }
+
+
+
+}
+

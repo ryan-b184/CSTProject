@@ -1,0 +1,54 @@
+@page "/TestFragmentStuff"
+@using System.Linq
+@using Blazorise
+@using Microsoft.EntityFrameworkCore
+@using CSTScheduling.Data.Services
+@inject CstScheduleDbService db
+
+
+<table>
+    <tr><th>Course</th></tr>
+    @if (itemList != null)
+    {
+        foreach (var i in itemList)
+        {
+        <tr @onclick="() => selObject = item">
+            @if (selObject != null && 1 == 1 )
+            {
+                <td class="table-danger">IDK WHAT TO SHOW HERE</td>
+            }
+            else
+            {
+        <td class="border border-danger">IDK WHAT TO SHOW HERE</td>
+            }
+                    
+        </tr>
+        }
+    }
+    else
+    {
+        <tr>
+            <td>Course List is currently empty</td>
+        </tr>
+    }
+</table>
+
+
+
+
+
+
+
+
+
+
+@code {
+    [Parameter]
+    public Object item { get; set; }
+
+    [Parameter]
+    public List<Object> itemList { get; set; }
+
+    public Object selObject;
+
+}

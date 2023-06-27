@@ -1,0 +1,108 @@
+﻿@inject CstScheduleDbService DbService
+@page "/test"
+<h3>Add Out of Program Instructors</h3>
+
+<!--<Modal Visible="@movingInstructors">
+    <ModalContent>
+        <EditForm Model="allDepartments">
+            <table>
+
+                <tr>
+                    <th>
+                        <label for="FromDepartment">@fromDepartment.departmentName</label>
+                    </th>
+                    <th>
+
+                    </th>
+                    <th>
+                        <label for="ToDepartment">@toDepartment.departmentName</label>
+                    </th>
+                </tr>
+                <tr>
+                    <td>
+                        <InputSelect id="toDepartment" @bind-Value="fromDepartment">
+                            @for (int x = 1; x <= allDepartments.Count; x++)
+                            {
+                                if (allDepartments[x] != fromDepartment && allDepartments[x] != toDepartment)
+                                {
+                                    <option value="@allDepartments[x]"> @allDepartments[x].departmentName</option>
+                                }
+                            }
+                        </InputSelect>
+                    </td>
+                    <td></td>-->
+                    @*<td>
+
+                        <InputSelect id="fromDepartment" @bind-Value="toDepartment">
+                            @for (int x = 1; x <= allDepartments.Count; x++)
+                            {
+                                if (allDepartments[x] != fromDepartment && allDepartments[x] != toDepartment)
+                                {
+                                    <option value="@allDepartments[x].ID">@allDepartments[x].departmentName</option>
+                                }
+                            }
+                        </InputSelect>
+                    </td>*@
+                <!--</tr>
+
+                <tr>
+                    <td>
+                        <div style="overflow:auto;">
+                            @for (int i = 0; i < fromInstructors.Count; i++)
+                            {
+                                <div style="outline: 1px solid black">@fromInstructors[i].lName, @fromInstructors[i].fName</div>
+                            }
+                        </div>
+                    </td>
+
+                    <td></td>
+
+                    <td>
+                        <div style="overflow:auto;">
+                            @for (int i = 0; i < fromInstructors.Count; i++)
+                            {
+                                <div style="outline: 1px solid black">@fromInstructors[i].lName, @fromInstructors[i].fName</div>
+                            }
+                        </div>
+                    </td>
+                </tr>
+            </table>
+        </EditForm>
+    </ModalContent>
+</Modal>-->
+
+@code {
+
+    //public List<Instructor> fromInstructors;
+    //public List<Instructor> toInstructors;
+    //public bool movingInstructors = false;
+    //public List<Department> allDepartments;
+    //public Department fromDepartment;
+    //public Department toDepartment = null;
+
+    //protected override void OnInitialized()
+    //{
+    //    base.OnInitialized();
+    //    Initialize();
+    //}
+
+    //private async void Initialize()
+    //{
+    //    fromInstructors = await DbService.GetInstructorsAsync();
+    //    fromDepartment = DbService.GetCurrentDepartment();
+    //    allDepartments = await DbService.GetDepartmentAsync();
+    //    toInstructors = new List<Instructor>();
+    //}
+
+    //private async void changeFromDepartment(int i)
+    //{
+    //    fromDepartment = allDepartments.Find(x => x.ID == i);
+    //    fromInstructors = await DbService.GetDepartmentInstructors(i);
+    //}
+
+    //private async void changeToDepartment(int i)
+    //{
+    //    toDepartment = allDepartments.Find(x => x.ID == i);
+    //    toInstructors = await DbService.GetDepartmentInstructors(i);
+    //}
+}

@@ -1,0 +1,591 @@
+@page "/semester"
+@using CSTScheduling.Data.Models
+@using CSTScheduling.Shared
+@inject NavigationManager nav
+@inject CstScheduleDbService DbService
+@inject IJSRuntime JS
+
+@if (CurrentDepartment.ID == 0)
+{
+    <h1 style="background-image: linear-gradient(45deg, #763898 0%, #272b30 60%); padding-left: 1em; color: #aaa;">Semesters</h1>
+    <br>
+    <h3>Please Create a Program to View Its Semesters</h3>
+}
+else
+{
+    <h1 style="background-image: linear-gradient(45deg, #763898 0%, #272b30 60%); padding-left: 1em; color: #aaa;">@DbService.CurrentDepartment.departmentName Semesters</h1>
+    <br>
+    <div style="width:75%;">
+        <EditForm Model="@CurrentDepartment">
+            <table class="table col-1">
+                <tr>
+                    <td>
+                        <label for="DepartmentYear">Year</label>
+                        <InputSelect id="DepartmentYear" ValueExpression="@( ()=> CurrentDepartment.lengthInYears )" Value="DbService.YearSelected" ValueChanged="@( (Double y) => YeardropdownChanged(y) )">
+                            @for (int x = 1; x <= CurrentDepartment.lengthInYears; x++)
+                            {
+                                <option value="@x">@x</option>
+                            }
+                        </InputSelect>
+                    </td>
+
+                    <td>
+                        <label for="DepartmentSemester">Semester</label>
+                        <InputSelect id="DepartmentSemester" ValueExpression="@( ()=>CurrentDepartment.semesterCount)" Value="DbService.SemesterSelected" ValueChanged="@( (int s) => SemesterdropdownChanged(s))" disabled="@(CurrentDepartment.semesterCount == 0)">
+                            @for (int x = 1; x <= CurrentDepartment.semesterCount; x++)
+                            {
+                                <option value="@x">@x</option>
+
+                            }
+                        </InputSelect>
+                    </td>
+
+                    <td>
+                        <label for="DepartmentStudentGroup">Group</label>
+                        <InputSelect id="DepartmentGroup" ValueExpression="@( ()=>CurrentDepartment.ProgramNumberOfGroups)" Value="DbService.StudentGroupSelected" ValueChanged="@( (int? s) => GroupdropdownChanged(s))" disabled="@(CurrentDepartment.ProgramNumberOfGroups == 0)">
+                            @for (int x = 1; x <= CurrentDepartment.ProgramNumberOfGroups; x++)
+                            {
+                                char letter = (char)('A' + (x - 1));
+                                <option value=@x>@letter</option>
+                            }
+                        </InputSelect>
+                    </td>
+                </tr>
+            </table>
+        </EditForm>
+        @if (CurrentSemester != null)
+        {
+            <EditForm Model="@CurrentSemester">
+                <table style="width:75%;">
+                    <tr>
+                        <td>
+                            <label for="StartDate">Start Date</label>
+                        </td>
+                        <td>
+                            <label for="EndDate">End Date</label>
+                        </td>
+                        <td>
+                            <label for="StartTime">Start Time</label>
+                        </td>
+                        <td>
+                            <label for="EndTime">End Time</label>
+                        </td>
+                        <td>
+                            <label for="BreakSelect">Break</label>
+                        </td>
+                        <td>
+                            <label for="BreakStart">Break Start</label>
+                        </td>
+                        <td>
+                            <label for="BreakEnd">Break End</label>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>
+                            <InputDate id="StartDate" @bind-Value="CurrentSemester.StartDate"></InputDate>
+                        </td>
+                        <td>
+                            <InputDate id="EndDate" @bind-Value="CurrentSemester.EndDate"></InputDate>
+                        </td>
+                        <td>
+                            <InputSelect id="StartTime" @bind-Value="CurrentSemester.StartTime">
+                                <option>Start Time</option>
+                                @for (int i = 0; i < 24; i++)
+                                        {
+                                    <option value=@i>@(@i + ":00")</option>
+                                        }
+                            </InputSelect>
+                        </td>
+                        <td>
+                            <InputSelect id="EndTime" @bind-Value="CurrentSemester.EndTime">
+                                <option>End Time</option>
+                                @for (int j = CurrentSemester.StartTime; j < 24; j++)
+                                        {
+                                    <option value=@j>@(@j + ":00")</option>
+                                        }
+                            </InputSelect>
+                        </td>
+                        <td style="text-align: center;">
+                            <InputCheckbox id="BreakSelect" @bind-Value="CurrentSemester.HasBreak"></InputCheckbox>
+                        </td>
+                        <td>
+                            <InputDate id="BreakStart" @bind-Value="CurrentSemester.BreakStart" disabled="@(!CurrentSemester.HasBreak)"></InputDate>
+                        </td>
+                        <td>
+                            <InputDate id="BreakEnd" @bind-Value="CurrentSemester.BreakEnd" disabled="@(!CurrentSemester.HasBreak)"></InputDate>
+                        </td>
+                        <td>
+                            <button @onclick="updateSemester">Save</button>
+                        </td>
+                    </tr>
+                </table>
+            </EditForm>
+            if (CurrentCourses != null)
+            {
+                <hr>
+                <h2 style="background-image: linear-gradient(45deg, #763898 0%, #272b30 60%); padding-left: 1em; color: #aaa;">Courses</h2>
+                <button type="submit" class="btn btn-outline-success" @onclick="SetCourse">Add Course</button>
+                <Table id="CourseTable">
+
+                    <tr>
+                        @* IMPLEMENT THIS AT SOME POINT *@
+                        @*@foreach (var prop in CurrentSemester.GetType().GetProperties())
+                            {
+                                <th>
+                                    @prop.Name
+                                </th>
+                            }*@
+                        <th>
+                            <label>Name</label>
+                        </th>
+                        <th>
+                            <label>Abbr.</label>
+                        </th>
+                        <th>
+                            <label>Hours</label>
+                        </th>
+                        <th>
+                            <label>Start</label>
+                        </th>
+                        <th>
+                            <label>End</label>
+                        </th>
+                        <th>
+                            <label>Total Hours</label>
+                        </th>
+                        <th>
+                            <label>Length</label>
+                        </th>
+                        <th>
+                            <label>Primary Ins.</label>
+                        </th>
+                        <th>
+                            <label>Secondary Ins.</label>
+                        </th>
+                        <th></th>
+                        <th></th>
+                    </tr>
+
+                    @for (int i = 0; i < CurrentCourses.Count; i++)
+                    {
+
+                        DateTime courseStartDate = (DateTime)CurrentCourses[@i].startDate;
+                        DateTime courseEndDate = (DateTime)CurrentCourses[@i].endDate;
+                        Course course = CurrentCourses[i];
+
+                        <tr>
+                            <td>
+                                <label>@CurrentCourses[i].courseName</label>
+                            </td>
+                            <td>
+                                <label>@CurrentCourses[i].courseAbbr</label>
+                            </td>
+                            <td>
+                                <label>@CurrentCourses[i].hoursPerWeek</label>
+                            </td>
+                            <td>
+                                <label>@courseStartDate.ToString(dateFormat)</label>
+                            </td>
+                            <td>
+                                <label>@courseEndDate.ToString(dateFormat)</label>
+                            </td>
+                            <td>
+                                <label>@CurrentCourses[i].totalHours</label>
+                            </td>
+                            <td>
+                                @if (CurrentCourses[i].numOfWeeks > 1)
+                                {
+                                    <label>@CurrentCourses[i].numOfWeeks Wk.</label>
+                                }
+                                else if (CurrentCourses[i].numOfWeeks == 1)
+                                {
+                                    <label>@CurrentCourses[i].numOfWeeks Wk.</label>
+                                }
+                                else
+                                {
+                                    <label>&#60; 1 Wk.</label>
+                                }
+
+                            </td>
+                            <td>
+                                @if (CurrentCourses[i].primaryInstructorIDBindable != 0 && CurrentCourses[i].primaryInstructor != null)
+                                {
+                                    @if (CurrentCourses[i].primaryInstructor.lName == null)
+                                    {
+                                        <label>@CurrentCourses[i].primaryInstructor.fName</label>
+                                    }
+                                    else
+                                    {
+                                        <label>@CurrentCourses[i].primaryInstructor.lName, @CurrentCourses[i].primaryInstructor.fName.Substring(0, 1).ToUpper()</label>
+                                    }
+                                }
+                                else
+                                {
+                                    <label>N/A</label>
+                                }
+                            </td>
+                            <td>
+                                @if (CurrentCourses[i].secondaryInstructorIDBindable != 0 && CurrentCourses[i].secondaryInstructor != null)
+                                {
+                                    @if (CurrentCourses[i].secondaryInstructor.lName == null)
+                                    {
+                                        <label>@CurrentCourses[i].secondaryInstructor.fName)</label>
+                                    }
+                                    else
+                                    {
+                                        <label>@CurrentCourses[i].secondaryInstructor.lName, @CurrentCourses[i].secondaryInstructor.fName.Substring(0, 1).ToUpper()</label>
+                                    }
+
+                                }
+                                else
+                                {
+                                    <label>N/A</label>
+                                }
+
+                            </td>
+                            <td><button class="btn btn-outline-warning" @onclick="(() => editCourse(course))">Edit</button></td>
+                            <td><button class="btn btn-outline-danger" @onclick="(() => confirmDeleteCourse(course))">Delete</button></td>
+                        </tr>
+                    }
+                </Table>
+
+            }
+            if (CurrentInstructors != null)
+            {
+                <h2 style="background-image: linear-gradient(45deg, #763898 0%, #272b30 60%); padding-left: 1em; color: #aaa;">Instructors</h2>
+                <div style="width:50%">
+                    <Table id="InstructorTable">
+
+                        <tr>
+                            <th>
+                                <label>Name</label>
+                            </th>
+                            <th>
+                                <label>Phone Number</label>
+                            </th>
+                            <th>
+                                <label>Office Number</label>
+                            </th>
+                        </tr>
+
+                        @for (int i = 0; i < CurrentInstructors.Count; i++)
+                        {
+                            @if (CurrentInstructors[i] != null)
+                            {
+                                <tr>
+                                    <td>
+                                        @if (CurrentInstructors[i].lName == null)
+                                        {
+                                            <label>@CurrentInstructors[i].fName</label>
+                                        }
+                                        else
+                                        {
+                                            <label>@CurrentInstructors[i].lName, @CurrentInstructors[i].fName.Substring(0, 1).ToUpper()</label>
+                                        }
+                                    </td>
+                                    <td>
+                                        <label>@CurrentInstructors[i].phoneNum</label>
+                                    </td>
+                                    <td>
+                                        <label>@CurrentInstructors[i].officeNum</label>
+                                    </td>
+                                </tr>
+                            }
+
+                        }
+                    </Table>
+                </div>
+
+            }
+        }
+
+    </div>
+
+
+    @if (course != null)
+    {
+        <Modal Visible="@(course != null)">
+            <ModalContent Centered="true">
+                <ModalHeader>
+                    <CloseButton />
+                </ModalHeader>
+                <ModalBody>
+
+                    @if (!editingCourse)
+                    {
+                        <h1 style="background-image: linear-gradient(45deg, #763898 0%, #272b30 70%); padding-left: 1em; color: #aaa;"><b>Add Course</b></h1>
+                    }
+                    else
+                    {
+                        <h1 style="background-image: linear-gradient(45deg, #763898 0%, #272b30 70%); padding-left: 1em; color: #aaa;"><b>Edit Course</b></h1>
+                    }
+
+                    <hr>
+
+                    <EditForm Model="course" class="needs-validation" novalidate OnValidSubmit="@HandleValidSubmit" OnInvalidSubmit="@HandleInvalidSubmit">
+
+                        <DataAnnotationsValidator />
+                        <div class="form-group">
+                            <label for="courseName" class="text-white">Course Full Name</label>
+                            <input type="text" class="form-control col-xl-12" id="courseName" @bind="course.courseName" />
+                            <ValidationMessage For="@(()=>course.courseName)" class="invalid-feedback" />
+                        </div>
+                        <div class="form-group">
+                            <label for="courseAbbr" class="text-white">Course Code</label>
+                            <input type="text" class="form-control" id="courseAbbr" @bind="course.courseAbbr" />
+                            <ValidationMessage For="@(()=>course.courseAbbr)" class="invalid-feedback" />
+                        </div>
+                        <div class="form-group">
+                            <label for="HoursPerWeek" class="text-white">Hours Per Week</label>
+                            <input type="number" class="form-control" id="hoursPerWeek" @bind="course.hoursPerWeek" />
+                            <ValidationMessage For="@(()=>course.hoursPerWeek)" class="invalid-feedback" />
+                        </div>
+                        <div class="form-group">
+                            <label for="creditUnits" class="text-white">Credit Units</label>
+                            <input type="number" class="form-control" id="creditUnits" @bind="course.creditUnits" />
+                            <ValidationMessage For="@(()=>course.creditUnits)" class="invalid-feedback" />
+                        </div>
+                        <div class="form-group">
+                            <label for="startDate" class="text-white">Start Date</label>
+                            <input type="date" class="form-control" id="startDate" @bind="course.startDate" />
+                            <ValidationMessage For="@(()=>course.startDate)" class="invalid-feedback" />
+                        </div>
+                        <div class="form-group">
+                            <label for="endDate" class="text-white">End Date</label>
+                            <input type="date" class="form-control" id="endDate" @bind="course.endDate" />
+                            <ValidationMessage For="@(()=>course.endDate)" class="invalid-feedback" />
+                        </div>
+
+                        <div>
+                            <label class="text-white">Classroom</label>
+                            <select class="form-control" id="classroom" @bind="course.classroomIDBindable">
+                                <option value="0">No Room</option>
+                                @if (roomList.Count > 0)
+                                {
+                                    @foreach (Room r in roomList)
+                                    {
+                                        <option value="@r.ID">@r.roomNumber</option>
+                                    }
+                                }
+
+                            </select>
+                            <ValidationMessage For="@(()=>course.classroomIDBindable)" />
+                        </div>
+                        <div>
+                            <label class="text-white">Primary Instructor</label>
+                            <select class="form-control" id="primaryInstructor" @bind="course.primaryInstructorIDBindable">
+                                <option value="0">No Instructor</option>
+                                @if (insList.Count > 0)
+                                {
+                                    @foreach (Instructor ins in this.insList)
+                                    {
+                                        <option value="@ins.ID">@ins.lName, @ins.fName</option>
+                                    }
+                                }
+
+                            </select>
+                            <ValidationMessage For="@(()=>course.primaryInstructorIDBindable)" />
+                        </div>
+                        <div>
+                            <label class="text-white">Secondary Instructor</label>
+                            <select class="form-control" id="secondaryInstructor" @bind="course.secondaryInstructorIDBindable">
+                                <option value="0">No Instructor</option>
+                                @if (insList.Count > 0)
+                                {
+                                    @foreach (Instructor ins in this.insList)
+                                    {
+                                        <option value="@ins.ID">@ins.lName, @ins.fName</option>
+                                    }
+                                }
+
+                            </select>
+                            <ValidationMessage For="@(()=>course.secondaryInstructorIDBindable)" />
+                        </div>
+                        <Alert Color="Color.Danger" @bind-Visible="@alert"><AlertMessage>Failed to submit</AlertMessage></Alert>
+                        <Alert Color="Color.Success" @bind-Visible="@success"><AlertMessage>Successfully added</AlertMessage></Alert>
+
+                        <hr>
+
+                        @if (!editingCourse)
+                        {
+                            <button type="submit" class="btn btn-outline-success">Add</button>
+                        }
+                        else
+                        {
+                            <button type="submit" class="btn btn-outline-success">Update</button>
+                        }
+
+
+                    </EditForm>
+                </ModalBody>
+            </ModalContent>
+        </Modal>
+    }
+}
+
+@if (courseToRemove != null)
+{
+    <Modal Visible="@(courseToRemove != null)" Closed="@closeConfirmModal">
+        <ModalContent>
+            <ModalHeader>
+                <h1>Delete Course @courseToRemove.ToString()?</h1>
+                <CloseButton></CloseButton>
+            </ModalHeader>
+            <ModalBody>
+                <p>
+                    Are you sure you want to permanently remove <Strong>Course @courseToRemove.ToString()?</Strong>
+                </p>
+                <div id="divButtons" class="d-flex flex-row justify-content-center">
+                    <button class="btn btn-primary m-2 " @onclick="@(e => deleteCourse())">Yes</button>
+                    <button class="btn btn-primary m-2" @onclick="@(e => closeConfirmModal())">No</button>
+                </div>
+            </ModalBody>
+        </ModalContent>
+    </Modal>
+}
+
+@code
+{
+
+
+    public List<Instructor> InstructorList;
+
+    [Parameter]
+    public EventCallback CancelRequest { get; set; }
+
+    public Course courseToRemove = null;
+    private void Reset() { course = new Course { semesterID = DbService.CurrentSemester.SemesterID }; }
+    private bool alert = false;
+    private bool success = false;
+    private bool editingCourse = false;
+
+    public Department CurrentDepartment;
+    public Semester CurrentSemester;
+    public List<Instructor> CurrentInstructors;
+    public List<Course> CurrentCourses;
+    String dateFormat = "MM/dd/yyyy";
+
+    #region Course Deletion
+    public void confirmDeleteCourse(Course course)
+    {
+        courseToRemove = course;
+    }
+
+    private void closeConfirmModal()
+    {
+        courseToRemove = null;
+    }
+
+    public async void deleteCourse()
+    {
+        if (courseToRemove != null)
+        {
+            CurrentCourses = await DbService.deleteCourseAsync(courseToRemove);
+            UpdatePage();
+            courseToRemove = null;
+
+        }
+    }
+    #endregion
+
+    private Task CancelAsync()
+    {
+        return CancelRequest.InvokeAsync(null);
+    }
+
+    private async Task HandleValidSubmit()
+    {
+        success = true;
+        alert = false;
+
+        if (editingCourse)
+        {
+            await DbService.UpdateCourseAsync(course);
+            editingCourse = false;
+        }
+        else
+        {
+            await DbService.AddCourseAsync(course);
+        }
+
+
+        UpdatePage();
+
+
+    }
+
+    private async Task HandleInvalidSubmit()
+    {
+        alert = true;
+        success = false;
+    }
+
+
+
+    private void updateSemester()
+    {
+        DbService.UpdateSemesterAsync();
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        await base.OnInitializedAsync();
+        UpdatePage();
+        this.CurrentDepartment = DbService.CurrentDepartment;
+        roomList = await DbService.GetRoomAsync();
+        insList = await DbService.GetInstructorsAsync();
+    }
+
+    private void SemesterdropdownChanged(int s)
+    {
+        DbService.SemesterSelected = s;
+        UpdatePage();
+    }
+
+    private void YeardropdownChanged(double s)
+    {
+        DbService.YearSelected = (int)s;
+        UpdatePage();
+    }
+
+    private void GroupdropdownChanged(int? s)
+    {
+        DbService.StudentGroupSelected = (int)s;
+        UpdatePage();
+    }
+
+    private async void UpdatePage()
+    {
+        course = null;
+        CurrentSemester = await DbService.GetSemesterAsync();
+        CurrentCourses = await DbService.GetSemesterCoursesAsync();
+        CurrentInstructors = await DbService.GetSemesterInstructorsAsync();
+    }
+
+    public void SetCourse()
+    {
+        this.editingCourse = false;
+        course = new Course() { semesterID = DbService.CurrentSemester.SemesterID };
+        course.startDate = DbService.CurrentSemester.StartDate;
+        course.endDate = DbService.CurrentSemester.EndDate;
+    }
+
+    public void editCourse(Course editCourse)
+    {
+        this.editingCourse = true;
+        this.course = editCourse;
+    }
+
+    #region Add Course Modal
+
+    // ADD COURSE MODAL
+    public Course course { get; set; } = null;
+    private List<Instructor> insList;
+    private List<Room> roomList;
+
+    #endregion
+
+
+
+}
+
