@@ -1,6 +1,6 @@
 ## README
 ### Abstract
-This is a scheduling software that makes printable schedules for students and teachers written in C# and Blazor
+This is a scheduling software that makes printable schedules for students and teachers written using C# and the Blazor framework.
 
 ### Notes
 This project was created and written in the last two semesters of my schooling at Saskatchewan Polytechnic in the CST program.
